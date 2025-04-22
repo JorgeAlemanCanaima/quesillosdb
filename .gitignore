@@ -30,3 +30,9 @@ Thumbs.db
 # Archivos de Render o producción (opcional)
 instance/
 *.bak
+
+# Archivos de configuración de Render
+.render/
+*.render.yaml
+*.render.yml
+*.render.json
