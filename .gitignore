@@ -1,10 +1,32 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Entornos virtuales
 env/
 venv/
-*.db
 
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Archivos temporales
+*.log
+*.pot
+*.mo
+
+# Archivos de entorno (¡no subir variables sensibles!)
 .env
 
+# Base de datos (si querés mantenerla local)
+*.db
+*.sqlite3
+
+# Configuraciones de IDE/editores
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Archivos de Render o producción (opcional)
+instance/
+*.bak
