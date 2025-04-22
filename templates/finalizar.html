@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Mesas
+{% endblock %}
+
+{% block main %}
+  <div class="container-fluid">
+    
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <a href="{{ url_for('editar_pedido', pedido_id=info[0]['pedido_id']) }}" class="btn btn-secondary d-flex align-items-center">
+                        <img style="height: 20px; width: 20px;" src="../static/images/logos/editar.png" alt="Editar" width="16" height="16">
+                    </a>
+                </div>
+                <div class="col">
+                    <h4 class="mb-0">Editar Pedido</h4>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <h5 class="text-center">Fecha: {{ info[0]['fecha'] }}</h5>
+                <h5 class="text-center">Mesa: {{ info[0]['mesa_id'] }}</h5>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col text-center">
+                    <h4>Subtotal: C$ <span id="subtotal">{{ "%.2f"|format(info[0]['total_monto']) }}</span></h4>
+                    <h5>Propina (10%): C$ <span id="propina">{{ "%.2f"|format(info[0]['total_monto'] * 0.10) }}</span></h5>
+                    <h3 style="background-color: #baccf0; padding: 5px;">Total: C$ <span id="total">{{ "%.2f"|format(info[0]['total_monto']) }}</span></h3>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="table-responsive">
+                    <table class="table text-nowrap align-middle mb-0">
+                      <thead>
+                        <tr class="border-2 border-bottom border-primary border-0"> 
+                          <th scope="col">Producto</th>
+                          <th scope="col">Precio Unitario</th>
+                          <th scope="col">Cantidad</th>
+                          <th scope="col">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody class="table-group-divider">
+                        {% for i in info %}
+                          <tr>        
+                            <td>{{ i['producto_nombre'] }}</td>
+                            <td>C$ {{ "%.2f"|format(i['producto_precio']) }}</td>
+                            <td>{{ i['cantidad'] }}</td>
+                            <td>C$ {{ "%.2f"|format(i['cantidad'] * i['producto_precio']) }}</td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+              <div class="col-12">
+                <form action="{{ url_for('finalizar', mesa_id=info[0]['mesa_id']) }}" method="POST">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="propinaSwitch" name="propina" value="1">
+                    <label class="form-check-label" for="propinaSwitch">¿Incluir propina?</label>
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100 text-center">
+                    🛒 Finalizar
+                  </button>
+                </form>
+              </div>
+            </div>
+
+        </div>
+    </div>
+  </div>
+
+  <!-- JavaScript para actualizar el total -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let propinaSwitch = document.getElementById("propinaSwitch");
+        let subtotal = parseFloat(document.getElementById("subtotal").innerText);
+        let propina = parseFloat(document.getElementById("propina").innerText);
+        let totalElement = document.getElementById("total");
+
+        propinaSwitch.addEventListener("change", function () {
+            if (propinaSwitch.checked) {
+                totalElement.innerText = (subtotal + propina).toFixed(2);
+            } else {
+                totalElement.innerText = subtotal.toFixed(2);
+            }
+        });
+    });
+  </script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Mesas
+{% endblock %}
+
+{% block extra_head %}
+<style>
+
+    .mesa-card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        text-align: center;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .mesa-card h5.normal{
+        background-color: #28a745;
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+        font-size: 1rem;
+    }
+    .mesa-card h5.atendida {
+        background-color: red !important;
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+        font-size: 1rem;
+    }
+    .mesa-card img {
+        border-radius: 50%;
+        width: 100px;
+        height: 100px;
+        margin: 10px 0;
+    }
+    .btn-atender {
+        font-size: 0.8rem;
+        padding: 5px 10px;
+        width: 80px;
+        margin: 10px auto 0;
+    }
+      </style>
+{% endblock %}
+
+{% block main %}
+  <!-- Contenedor con las mesas -->
+  <div class="container-fluid">
+    <h1 class="text-center">Mesas</h1>
+    <div class="row">
+        
+
+        {% for mesa in mesas %}
+            {% if not mesa.atendida %}
+            <div class="col-lg-3">
+                <div class="mesa-card">
+                    <h5 class="normal">{{ mesa.nombre }}</h5>
+                    <img src="../static/images/logos/{{ mesa.imagen or 'mesa.webp' }}" alt="{{ mesa.nombre }}">
+                    <a class="btn btn-primary btn-atender" href="{{ url_for('products', mesa_id=mesa.id) }}">Atender</a>
+    
+                </div>
+            </div>
+            {% else %}
+            <div class="col-lg-3">
+                <div class="mesa-card">
+                    <h5 class="atendida">{{ mesa.nombre }}</h5>
+                    <img src="../static/images/logos/{{ mesa.imagen or 'mesa.webp' }}" alt="{{ mesa.nombre }}">
+                    <a class="btn btn-primary btn-atender" href="{{ url_for('finalizar', mesa_id=mesa.id) }}">Ver Mesa</a>
+    
+                </div>
+            </div>
+            {% endif%}
+
+        {% endfor %}
+    </div>
+  </div>
+{% endblock %}

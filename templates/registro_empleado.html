@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block title %}Registro de Empleados{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-header bg-primary text-white text-center rounded-top-4">
+            <h3 class="mb-0">📋 Registrar Nuevo Empleado</h3>
+        </div>
+        <div class="card-body">
+            <form id="formEmpleado" method="POST" action="{{ url_for('empleados') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="nombre" class="form-label">👤 Nombre completo</label>
+                        <input type="text" class="form-control rounded-3" id="nombre" name="nombre" placeholder="ingrese" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="cargo" class="form-label">💼 Cargo</label>
+                        <input type="text" class="form-control rounded-3" id="cargo" name="cargo" placeholder="ingrese..." required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="salario" class="form-label">💰 Salario</label>
+                        <input type="number" class="form-control rounded-3" id="salario" name="salario" placeholder="ingrese" min="0" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="telefono" class="form-label">📞 Teléfono</label>
+                        <input type="tel" class="form-control rounded-3" id="telefono" name="telefono" placeholder="ingrese" pattern="[0-9]{8,15}" required>
+                    </div>
+                    <div class="col-12">
+                        <label for="direccion" class="form-label">📍 Dirección</label>
+                        <textarea class="form-control rounded-3" id="direccion" name="direccion" rows="3" placeholder="ingrese" required></textarea>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm">
+                        ✅ Registrar Empleado
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('formEmpleado').addEventListener('submit', function(e) {
+        const nombre = document.getElementById('nombre').value.trim();
+        if (nombre.length < 3) {
+            e.preventDefault();
+            alert("⚠️ El nombre debe tener al menos 3 caracteres.");
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Entradas de Inventario
+{% endblock %}
+
+{% block main %}
+<div class="container">
+    <h1>Registro de Entradas de Inventario</h1>
+    
+    <!-- Filtros - Misma lógica que facturación -->
+    <form method="GET" action="{{ url_for('registro') }}" class="mb-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label for="rango_fecha" class="col-form-label">Filtrar por:</label>
+            </div>
+            <div class="col-auto">
+                <select name="rango_fecha" id="rango_fecha" class="form-select">
+                    <option value="" {% if not rango_fecha_seleccionado %}selected{% endif %}>Todos los registros</option>
+                    <option value="hoy" {% if rango_fecha_seleccionado == 'hoy' %}selected{% endif %}>Hoy</option>
+                    <option value="ultimos_7_dias" {% if rango_fecha_seleccionado == 'ultimos_7_dias' %}selected{% endif %}>Últimos 7 días</option>
+                    <option value="ultimo_mes" {% if rango_fecha_seleccionado == 'ultimo_mes' %}selected{% endif %}>Último mes</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Aplicar</button>
+                {% if rango_fecha_seleccionado %}
+                    <a href="{{ url_for('registro') }}" class="btn btn-outline-secondary">Limpiar</a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <!-- Tabla de entradas -->
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Proveedor</th>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Costo Unitario</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entrada in registro %}
+            <tr>
+                <td>{{ entrada['entrada_id'] }}</td>
+                <td>{{ entrada['proveedor'] }}</td>
+                <td>
+                    {% if entrada['fecha_entrada'] is string %}
+                        {{ entrada['fecha_entrada'][:10] }} {{ entrada['fecha_entrada'][11:16] }}
+                    {% else %}
+                        {{ entrada['fecha_entrada'].strftime('%d/%m/%Y %H:%M') }}
+                    {% endif %}
+                </td>
+                <td>{{ entrada['producto_nombre'] }}</td>
+                <td>{{ entrada['cantidad_ingresada'] }}</td>
+                <td>C${{ "%.2f"|format(entrada['costo_unitario']) }}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" 
+                            data-bs-target="#editarModal" 
+                            data-entrada-id="{{ entrada['entrada_id'] }}"
+                            data-fecha-entrada="{% if entrada['fecha_entrada'] is string %}{{ entrada['fecha_entrada'] }}{% else %}{{ entrada['fecha_entrada'].isoformat() }}{% endif %}"
+                            data-cantidad="{{ entrada['cantidad_ingresada'] }}"
+                            data-costo="{{ entrada['costo_unitario'] }}"
+                            data-producto-id="{{ entrada['producto_id'] }}"
+                            data-proveedor="{{ entrada['proveedor'] }}">
+                        Editar
+                    </button>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center">No hay registros para mostrar</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Modal de Edición -->
+    <div class="modal fade" id="editarModal" tabindex="-1" aria-labelledby="editarModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="editarModalLabel">Editar Entrada de Inventario</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ url_for('editar_registro') }}">
+                    <div class="modal-body">
+                        <input type="hidden" id="entrada_id" name="id">
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editpro" class="form-label">Proveedor <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="editpro" name="proveedor" required>
+                                        <option value="" disabled selected>Selecciona un proveedor</option>
+                                        <option value="MERCADO ORIENTAL">MERCADO ORIENTAL</option>
+                                        <option value="Alimentos Frescos del Caribe">Alimentos Frescos del Caribe</option>
+                                        <option value="Bebidas Nicas">Bebidas Nicas</option>
+                                        <option value="Carnes La Chanchera">Carnes La Chanchera</option>
+                                        <option value="Lácteos del Valle">Lácteos del Valle</option>
+                                        <option value="Panadería El Buen Pan">Panadería El Buen Pan</option>
+                                        <option value="Limpieza Total">Limpieza Total</option>
+                                        <option value="Utensilios Nica">Utensilios Nica</option>
+                                        <option value="Especias Nicaragüenses">Especias Nicaragüenses</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="fecha_entrada" class="form-label">Fecha de Entrada <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control" id="fecha_entrada" name="fecha_entrada" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="cantidad_ingresada" class="form-label">Cantidad <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="cantidad_ingresada" name="cantidad_ingresada" min="1" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="costo_unitario" class="form-label">Costo Unitario (C$) <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" class="form-control" id="costo_unitario" name="costo_unitario" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="producto_id" class="form-label">Producto <span class="text-danger">*</span></label>
+                            <select class="form-select" id="producto_id" name="producto_id" required>
+                                <option value="">Seleccione un producto</option>
+                                {% for producto in productos %}
+                                    <option value="{{ producto['id'] }}">{{ producto['nombre'] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i> Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script para manejar el modal -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var editarModal = document.getElementById('editarModal');
+        
+        editarModal.addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var modal = this;
+            
+            // Obtener datos del botón
+            var entradaId = button.getAttribute('data-entrada-id');
+            var proveedor = button.getAttribute('data-proveedor');
+            var fechaHora = button.getAttribute('data-fecha-entrada');
+            var cantidad = button.getAttribute('data-cantidad');
+            var costo = button.getAttribute('data-costo');
+            var productoId = button.getAttribute('data-producto-id');
+            
+            // Formatear fecha para el input (datetime-local necesita formato YYYY-MM-DDTHH:MM)
+            var fechaParaInput = fechaHora.includes('T') ? fechaHora.substring(0, 16) : fechaHora.replace(' ', 'T').substring(0, 16);
+            
+            // Actualizar campos del modal
+            modal.querySelector('#entrada_id').value = entradaId;
+            modal.querySelector('#editpro').value = proveedor || '';
+            modal.querySelector('#fecha_entrada').value = fechaParaInput;
+            modal.querySelector('#cantidad_ingresada').value = cantidad;
+            modal.querySelector('#costo_unitario').value = costo;
+            modal.querySelector('#producto_id').value = productoId;
+            
+            // Actualizar título
+            modal.querySelector('.modal-title').textContent = 'Editar Entrada #' + entradaId;
+        });
+    });
+    </script>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Registros Productos
+{% endblock %}
+
+{% block main %}
+<form action="/ingresoproducto" method="post">
+  <div class="row">
+      <!-- Product Information Section -->
+      <div class="col-md-6 mb-3">
+        <div class="card bg-light text-dark p-3">
+          <h5>Información del Producto</h5>
+          <div class="mb-3">
+            <label class="form-label">Nombre del producto</label>
+            <input name="nombre" type="text" class="form-control" placeholder="Ingrese el nombre del producto">
+          </div>
+          <div class="row">
+
+           
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Precio Venta</label>
+              <input name="precio" type="text" class="form-control" placeholder="Ingrese el precio de venta">
+            </div>
+
+          </div>
+        </div>
+      </div>
+      
+      <!-- Product Classification Section -->
+      <div class="col-md-6 mb-3">
+        <div class="card bg-light text-dark p-3">
+          <h5>Clasificación del Producto</h5>
+          <div class="mb-3">
+            <label class="form-label">Categoría</label>
+            <select name ="categoria"  id="categoria" class="form-select">
+              <option value="">Seleccione categoría</option>
+              <option value="desayuno">Desayuno</option>
+              <option value="bebidas">Bebidas</option>
+              <option value="antojos tipicos">Antojos Tipicos</option>
+              <option value="quesillos">Quesillos</option>
+              <option value="postres">Postres</option>
+            </select>
+          </div>
+       <!-- Sección Imagen del Producto -->
+      <div class="card bg-light text-dark p-3 mt-3">
+          <h5>Imagen del Producto</h5>
+          <p>Agrega una imagen del producto</p>
+          <div class="text-center mb-3">
+          <!-- Imagen actual del producto -->
+          <img id="product-image-preview" src="../static/images/products/mesa.jpg" alt="Producto" class="img-thumbnail" style="width: 100px;">
+          </div>
+          <!-- Campo de entrada para cargar nueva imagen -->
+          <input type="file" class="form-control" id="product-image-input" accept="image/*" onchange="previewImage(event)">
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="d-flex justify-content-end mt-3">
+          <a class="btn btn-secondary me-2" href="{{ url_for('ingresoproducto') }}" aria-expanded="false">Descartar</a>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+
+      
+  </div>
+</form>
+{% endblock %}

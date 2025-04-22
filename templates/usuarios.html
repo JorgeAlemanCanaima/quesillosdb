@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Usuarios
+{% endblock %}
+
+{% block main %}
+<div class="contenedor">
+  <div class="card">
+    <div class="card-body">
+        <h4 class="card-title">Registrar un nuevo usuario</h4>
+        <form action="/usuarios" method="post">
+            <div class="row">
+                <div class="col-lg-4 mb-3">
+                    <label for="input1" class="form-label">Usuario</label>
+                    <input name="usuario" type="text" class="form-control" id="input1" placeholder="Usuario">
+                </div>
+                <div class="col-lg-4 mb-3">
+                    <label for="input1" class="form-label">Roles</label>
+                    <input name="roles" type="text" class="form-control" id="input2" placeholder="Roles">
+                </div>
+                <div class="col-lg-4 mb-3">
+                    <label for="input1" class="form-label">Contraseña</label>
+                    <input name="password" type="password" class="form-control" id="input3" placeholder="Contraseña">
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <button class="btn btn-primary w-100 py-8 fs-4 mb-4" type="submit">Registrar</button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+
+
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Usuarios</h5>
+      <div class="table-responsive">
+        <table class="table text-nowrap align-middle mb-0">
+          <thead>
+            <tr class="border-2 border-bottom border-primary border-0"> 
+              <th scope="col" class="ps-0">User</th>
+              <th scope="col" >Rol</th>
+              <th scope="col" >password</th>
+              <th scope="col">Opciones</th>
+            </tr>
+          </thead>
+          <tbody class="table-group-divider">
+            {% for i in info %}
+              <tr>
+                <td>{{ i['nombre_user'] }} </td>
+                <td>{{ i['rol']  }} </td>
+                <td>{{ i['contra_user'] }} </td>
+                <td>
+                  <a href="borrar.html" class="btn btn-danger">
+                  <img src="../static/images/logos/delete.png" alt="Editar" width="16" height="16">
+                </a> 
+                <a href="borrar.html" class="btn btn-secondary">
+                  <img src="../static/images/logos/editar.png" alt="Editar" width="16" height="16">
+                </a> 
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

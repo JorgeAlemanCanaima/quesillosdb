@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pedidos</title>
+  <link rel="shortcut icon" type="image/png" href="../static/images/logos/logo.jpg" />
+  <link rel="stylesheet" href="../static/css/styles.min.css" />
+  <style>
+    /* Estilos personalizados */
+    .category-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow-y: auto;
+      max-height: 400px;
+    }
+    .category-item {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .category-item img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 5px;
+    }
+    .product-table {
+      max-height: 400px; /* Ajuste dinámico de altura */
+      overflow-y: auto;
+      display: block;
+      width: 100%;
+    }
+    .order-table tbody {
+      max-height: 220px; /* Altura para 3 filas aproximadamente */
+      overflow-y: auto;
+      display: block;
+    }
+    
+    .order-table thead, .order-table tbody tr {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+    .totals-container {
+      margin-top: 15px;
+    }
+    .container-fluid {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Ocupa toda la altura de la pantalla */
+  }
+
+  .encabezado {
+    flex: 0 0 20%; /* Ocupa el 20% de la altura total */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centrar verticalmente el contenido */
+    align-items: center; /* Centrar horizontalmente el contenido */
+    border-radius: 10px; /* Bordes redondeados opcionales */
+  }
+
+  .contenido {
+    flex: 1; /* Ocupa el resto del espacio (80%) */
+    overflow-y: auto; /* Permite el scroll si el contenido es mayor al área */
+    margin-top: 10px;
+  }
+
+  .product-table-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden; /* Evita que el contenido exceda la altura */
+  }
+
+  .product-table-container h3 {
+    margin-bottom: 10px;
+  }
+
+  .product-table {
+    width: 100%; /* Ancho completo de la columna */
+    flex: 1; /* Ocupa el espacio vertical disponible */
+    overflow-y: auto; /* Scroll vertical si hay demasiados productos */
+  }
+
+</style>
+</head>
+<body style="background-color: #f2f2f2;">
+  <div class="container-fluid">
+
+    <div class="row encabezado mx-3 mt-3">
+      <div class="card shadow">
+        <div class="card-body m-3 d-flex align-items-center justify-content-between">
+          <div class="div">
+            <h2 class="mb-0">Procesando pedido {{ mesa_nombre }}</h2>
+            <p class="mb-0">Fecha: {{ info[0]['fecha'] }}</p>
+          </div>
+          <div class="nombre-cliente-input mb-3">
+            <label for="input1" class="form-label mx-1">Nombre Cliente</label>
+              <input id= "nombre_cliente" name="nombre_cliente" type="text" class="form-control" id="input1" placeholder="{{ info[0]['nombre'] }}" disabled>
+          </div>
+
+          <button id="submit-order" type="submit" class="btn btn-primary mt-3">Ordenar</button>
+
+        </div>
+      </div>
+
+    </div>
+
+    <div  class="card shadow mx-3">
+      <div class="row contenido mx-3">
+        <div class="col-lg-2">
+            <h5>Categorías</h5>
+            <div class="category-menu" id="category-menu">
+                <!-- Categorías estáticas -->
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <h3>Productos</h3>
+            <div class="table-responsive">
+              <table class="table w-100 text-wrap align-middle mb-0 product-table">
+                <thead>
+                  <tr class="border-2 border-bottom border-primary border-0">
+                    <th style="width: 12.00%;" class="flex-fill">ID</th>
+                    <th style="width: 40.00%;" class="flex-fill">Nombre</th>
+                    <th style="width: 23.00%;" class="flex-fill">Precio</th>
+                    <th style="width: 25.00%;" class="flex-fill">Accion</th>
+                  </tr>
+                </thead>
+                <tbody id="product-table-body">
+                  <!-- Filas dinámicas para productos -->
+                </tbody>
+              </table>
+            </div>
+
+        </div>
+    
+        <!-- Tabla de pedido -->
+        <div class="col-lg-6">
+            <h3>Pedido</h3>
+            <div class="table-responsive">
+              <table class="table text-wrap align-middle mb-0 order-table ">
+                <thead>
+                  <tr class="border-2 border-bottom border-primary border-0">
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Cantidad</th>
+                    <th>Total</th>
+                    <th>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="order-table-body">
+                  <!-- Filas dinámicas para productos del pedido -->
+                </tbody>
+              </table>
+            </div>
+
+    
+            <!-- Totales -->
+             <div class="card shadow-sm mt-2">
+              <div class="card-body">
+                <div class="totals-container">
+                  <div class="form-group row">
+                    <label class="col-sm-4 col-form-label">Subtotal:</label>
+                    <div class="col-sm-8">
+                      <input type="text" id="subtotal" class="form-control" readonly>
+                    </div>
+                  </div>
+                  <div class="form-group row">
+                    <label class="col-sm-4 col-form-label">PROPINA (10%):</label>
+                    <div class="col-sm-8">
+                      <input type="text" id="iva" class="form-control" readonly>
+                    </div>
+                  </div>
+                  <div class="form-group row">
+                    <label class="col-sm-4 col-form-label">Total:</label>
+                    <div class="col-sm-8">
+                      <input type="text" id="total" class="form-control" readonly>
+                    </div>
+                  </div>
+                </div>
+              </div>
+             </div>
+            
+        </div>
+    </div>
+    </div>
+
+    
+    <script>
+      const categories = [
+        { id: 1, name: "desayuno", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3TfoRscnBjdgIrOT8CMxlpmKbpRs5G8jJgA&s" },
+        { id: 2, name: "asados", image: "https://chefmont.com/wp-content/uploads/2019/09/asados.jpg" },
+        { id: 3, name: "quesillo", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRknQpUj8_JUK4yttG_JDjimSNlK_EaP4OoQ&s" },
+        { id: 4, name: "bebidas", image: "https://s3.amazonaws.com/images.ecwid.com/images/29960109/1540948372.jpg" },
+        { id: 5, name: "antojos tipicos", image: "https://i.pinimg.com/originals/5b/ea/4c/5bea4c73230d111ad53384bfaa3bac58.jpg" },
+        { id: 5, name: "postres", image: "https://www.elmueble.com/medio/2023/12/14/ideas-de-postres-para-navidad-que-puedes-preparar-con-antelacion-y-congelar_0cf3e42e_231128110103_231214150004_900x900.jpg" },
+        { id: 5, name: "extras", image: "https://static01.nyt.com/images/2024/08/06/multimedia/11EATrex-flour-tortillas-mvfk/11EATrex-flour-tortillas-mvfk-googleFourByThree.jpg" }
+      ];
+    
+        const orderItems = [];
+    
+        function loadCategories() {
+          const categoryMenu = document.getElementById('category-menu');
+          categoryMenu.innerHTML = '';
+          categories.forEach(category => {
+            const categoryItem = document.createElement('div');
+            categoryItem.className = 'category-item';
+            categoryItem.innerHTML = `
+              <img src="${category.image}" alt="${category.name}">
+              <span>${category.name}</span>
+            `;
+            categoryItem.onclick = () => loadProducts(category.name);
+            categoryMenu.appendChild(categoryItem);
+          });
+        }
+    
+        function loadProducts(categoryName) {
+          fetch(`/products/${categoryName}`)
+            .then(response => response.json())
+            .then(products => {
+              const productTableBody = document.getElementById('product-table-body');
+              productTableBody.innerHTML = '';
+              products.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td>${product.id}</td>
+                  <td>${product.nombre}</td>
+                  <td>C$${Number(product.precio).toFixed(2)}</td>
+                  <td><button onclick="addToOrder(${product.id}, '${product.nombre}', ${product.precio})" class="btn btn-primary btn-sm">Añadir</button></td>
+                `;
+                productTableBody.appendChild(row);
+              });
+            });
+        }
+    
+        function addToOrder(id, nombre, precio) {
+          const existingItem = orderItems.find(item => item.id === id);
+          if (existingItem) {
+            existingItem.cantidad++;
+          } else {
+            orderItems.push({ id, nombre, precio, cantidad: 1 });
+          }
+          renderOrderTable();
+          calculateTotals();
+        }
+        function removeFromOrder(id) {
+            const itemIndex = orderItems.findIndex(item => item.id === id);
+            if (itemIndex !== -1) {
+                orderItems.splice(itemIndex, 1); // Eliminar el producto del array
+                renderOrderTable();             // Renderizar la tabla actualizada
+                calculateTotals();              // Recalcular los totales
+            }
+        }
+    
+        function renderOrderTable() {
+          const orderTableBody = document.getElementById('order-table-body');
+          orderTableBody.innerHTML = '';
+          orderItems.forEach(item => {
+            const total = item.precio * item.cantidad;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${item.nombre}</td>
+              <td>C$${item.precio.toFixed(2)}</td>
+              <td><input type="number" value="${item.cantidad}" min="1" onchange="updateQuantity(${item.id}, this.value)" class="form-control"></td>
+              <td>C$${total.toFixed(2)}</td>
+              <td>
+                <button onclick="removeFromOrder(${item.id})" class="btn btn-danger btn-sm">
+                  <img src="../static/images/logos/delete.png" alt="Editar" width="16" height="16">
+
+                </button>
+              </td>
+            `;
+            orderTableBody.appendChild(row);
+          });
+        }
+    
+        function updateQuantity(id, cantidad) {
+          const item = orderItems.find(item => item.id === id);
+          if (item) {
+            item.cantidad = parseInt(cantidad);
+            renderOrderTable();
+            calculateTotals();
+          }
+        }
+    
+        function calculateTotals() {
+          let subtotal = 0;
+          orderItems.forEach(item => {
+            subtotal += item.precio * item.cantidad;
+          });
+          const iva = subtotal * 0.10;
+          const total = subtotal + iva;
+    
+          document.getElementById('subtotal').value = `C$${subtotal.toFixed(2)}`;
+          document.getElementById('iva').value = `C$${iva.toFixed(2)}`;
+          document.getElementById('total').value = `C$${total.toFixed(2)}`;
+        }
+        
+        
+        document.addEventListener('DOMContentLoaded', loadCategories);
+    </script>
+
+  </div>
+  <script src="../static/libs/jquery/dist/jquery.min.js"></script>
+  <script src="../static/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../static/libs/apexcharts/dist/apexcharts.min.js"></script>
+  <script src="../static/libs/simplebar/dist/simplebar.js"></script>
+  <script src="../static/js/sidebarmenu.js"></script>
+  <script src="../static/js/app.min.js"></script>
+  <script src="../static/js/dashboard.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
+  <script>
+    function loadOrder() {
+// Obtén el ID del pedido desde la variable de plantilla
+    //const pedidoId = {{ pedido_id }};
+    
+    // Realiza la solicitud para obtener los datos del pedido
+    fetch(`/pedido/{{ pedido_id }}/data`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Error al cargar los datos del pedido no hay respuesta.");
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Actualiza los datos del pedido en la tabla
+        orderItems.push(...data.orderItems);
+        renderOrderTable();
+        calculateTotals(); // Calcula totales al cargar los datos
+      })
+      .catch(error => {
+        console.error('Error al cargar el pedido:', error);
+        alert('No se pudieron cargar los datos del pedido .');
+      });
+    };
+
+    document.getElementById('submit-order').addEventListener('click', function() {
+      // Recopila los datos del pedido
+      const orderData = orderItems.map(item => ({
+        id: item.id,
+        nombre: item.nombre,
+        precio: item.precio,
+        cantidad: item.cantidad,
+        total: (item.precio * item.cantidad).toFixed(2)
+      }));
+
+      if (orderData.length === 0) {
+        alert("El pedido está vacío. Agrega productos antes de enviarlo.");
+        return;
+      }
+      //obtenemos el nombre del cliente
+      const clienteInput = document.getElementById('nombre_cliente');
+      const cliente = clienteInput ? clienteInput.value.trim() : '';
+  
+      
+  
+      // Enviar los datos al servidor
+      fetch(`/editar_pedido/{{ pedido_id }}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderData , cliente }), // Enviar solo los datos necesarios
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.text().then(err => { throw new Error(err); });
+        }
+        return response.json();
+        })
+      .then(data => {
+        if (data.redirect) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Pedido editado correctamente',
+          text: 'El pedido ha sido actualizado con éxito.',
+          confirmButtonText: 'Aceptar'
+        }).then(() => {
+          // Redirige después de cerrar la alerta
+          window.location.href = data.redirect;
+        });
+      } else {
+        console.log('Pedido procesado', data);
+      }
+        })
+      .catch(error => {
+        console.error('Error:', error.message); // Muestra el error exacto
+        alert('Ocurrió un error al enviar el pedido: ' + error.message);
+      });
+    });
+    document.addEventListener('DOMContentLoaded', loadOrder);
+
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+</body>
+</html>

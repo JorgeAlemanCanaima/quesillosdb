@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Empleados
+{% endblock %}
+
+{% block main %}
+  <div class="container mt-4">
+    <h2 class="mb-4 text-center">Lista de Empleados</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning" role="alert">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="table-responsive">
+      <table class="table table-striped table-hover table-bordered shadow">
+        <thead class="table-primary">
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Cargo</th>
+            <th>Salario</th>
+            <th>Teléfono</th>
+            <th>Dirección</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in empleados %}
+          <tr>
+            <td>{{ emp[0] }}</td>
+            <td>{{ emp[1] }}</td>
+            <td>{{ emp[2] }}</td>
+            <td>C${{ emp[3] }}</td>
+            <td>{{ emp[4] }}</td>
+            <td>{{ emp[5] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="text-center mt-4">
+      <a href="{{ url_for('empleados') }}" class="btn btn-primary">Registrar Nuevo Empleado</a>
+    </div>
+  </div>
+{% endblock %}
