@@ -186,14 +186,23 @@ def historial():
     try:
         cursor = connection.cursor()
 
+        # Propinas de hoy
         cursor.execute("""
-            SELECT SUM(f.propina)
-            FROM facturas f
-            JOIN pedidos p ON f.codigo = p.codigo_factura
-            WHERE f.propina IS NOT NULL
-            AND date(p.fecha_hora) = date('now')
+            SELECT IFNULL(SUM(propina), 0) as total
+            FROM facturas
+            WHERE DATE(fecha_creacion) = DATE('now')
         """)
-        propinas_hoy = cursor.fetchone()[0] or 0
+        propinas_hoy = cursor.fetchone()['total']
+
+       
+
+        # Propinas de este mes
+        cursor.execute("""
+            SELECT IFNULL(SUM(propina), 0) as total
+            FROM facturas
+            WHERE strftime('%Y-%m', fecha_creacion) = strftime('%Y-%m', 'now')
+        """)
+        propinas_mes = cursor.fetchone()['total']
 
 
         # Ventas de hoy 
@@ -278,7 +287,9 @@ def historial():
                             ventas_totales=ventas_totales,
                             productos_mas_vendidos=productos_mas_vendidos,
                             meses_top=meses_top,
-                            ventas_top=ventas_top)
+                            ventas_top=ventas_top,
+                            propinas_hoy=propinas_hoy,
+                            propinas_mes=propinas_mes)
 
     except Exception as e:
         print(f"Error en historial: {e}")
@@ -731,7 +742,6 @@ def atender_mesa(mesa_id):
     
 
 
-#ruta para la plantilla de finalizar un pedido
 @app.route('/finalizar/<int:mesa_id>', methods=['GET', 'POST'])
 @login_required
 def finalizar(mesa_id):
@@ -769,9 +779,15 @@ def finalizar(mesa_id):
             propina = total_factura * 0.10 if incluir_propina else 0
             print(propina)
             nuevo_total = total_factura + propina
-            #actualizamos el estado y el monto en dependencia de que si quiere agregar propina o no
-            cursor.execute('''UPDATE facturas SET estado = 'pagada', monto = ?
-                WHERE codigo = (SELECT codigo_factura FROM pedidos WHERE pedidos.id = ?)''', (nuevo_total, pedido_id))
+            
+            # ACTUALIZACIÓN MODIFICADA PARA INCLUIR LA COLUMNA PROPINA
+            cursor.execute('''UPDATE facturas 
+                          SET estado = 'pagada', 
+                              monto = ?,
+                              propina = ?
+                          WHERE codigo = (SELECT codigo_factura FROM pedidos WHERE pedidos.id = ?)''', 
+                          (nuevo_total, propina, pedido_id))
+            
         #manejo de errores 
         except Exception as e:
             print('No se puedo actualizar el estado de la factura', e)
@@ -831,7 +847,7 @@ def finalizar(mesa_id):
                 connection.commit()
                 return render_template("finalizar.html", info = info)
             except Exception as e:
-                return f"Error al cargar los datos: {str(e)}", 500
+                return f"Error al cargar los datos: {str(e)}",500
 
 
 
@@ -856,7 +872,8 @@ def facturacion():
                 p.fecha_hora, 
                 cl.num_mesa, 
                 p.id AS pedido_id,
-                e.nombre AS mesero
+                e.nombre AS mesero,
+                f.propina  
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
             JOIN clientes cl ON p.clientes_id = cl.id

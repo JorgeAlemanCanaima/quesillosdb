@@ -120,6 +120,7 @@
                     <th>Código</th>
                     <th>Pedido ID</th>
                     <th>Monto</th>
+                    <th>Propina</th>
                     <th>Fecha</th>
                     <th>Estado</th>
                     <th class="no-print">Acciones</th>
@@ -132,6 +133,7 @@
                     <td>{{ factura['codigo'] }}</td>
                     <td>{{ factura['pedido_id'] }}</td>
                     <td>C${{ "%.2f"|format(factura['monto']) }}</td>
+                    <td>C${{ "%.2f"|format(factura['propina']) }}</td>
                     <td>
                         {% if factura['fecha_hora'] is string %}
                             {{ factura['fecha_hora'][:10] }} {{ factura['fecha_hora'][11:16] }}
@@ -157,7 +159,8 @@
                                     '{% if factura['fecha_hora'] is string %}{{ factura['fecha_hora'][:10] }} {{ factura['fecha_hora'][11:16] }}{% else %}{{ factura['fecha_hora'].strftime('%d/%m/%Y %H:%M') }}{% endif %}',
                                     '{{ factura['estado'] }}',
                                     '{{ factura['num_mesa'] }}',
-                                    '{{ factura['mesero'] }}'
+                                    '{{ factura['mesero'] }}',
+                                    '{{ "%.2f"|format(factura['propina']) }}'
                                 )">
                             <i class="bi bi-eye"></i> Ver Factura
                         </button>
@@ -216,12 +219,13 @@
     // Declarar variable global para almacenar los datos de la factura
     let currentFactura = {};
 
-    function cargarDetalleFactura(codigo, cliente, pedidoId, monto, fecha, estado, mesa, mesero) {
+    function cargarDetalleFactura(codigo, cliente, pedidoId, monto, fecha, estado, mesa, mesero, propina) {
         currentFactura = {
             codigo: codigo,
             cliente: cliente,
             pedidoId: pedidoId,
             monto: parseFloat(monto),
+            propina: parseFloat(propina),
             fecha: fecha,
             estado: estado,
             mesa: mesa,
@@ -233,8 +237,7 @@
             .then(response => response.json())
             .then(data => {
                 currentFactura.productos = data.orderItems;
-                currentFactura.subtotal = currentFactura.monto / 1.1;
-                currentFactura.propina = currentFactura.monto - currentFactura.subtotal;
+                currentFactura.subtotal = currentFactura.monto - currentFactura.propina;
                 mostrarDetalleFactura();
             })
             .catch(error => {
@@ -311,7 +314,7 @@
                             <td>C$${currentFactura.subtotal.toFixed(2)}</td>
                         </tr>
                         <tr>
-                            <td><strong>PROPINA (10%):</strong></td>
+                            <td><strong>PROPINA:</strong></td>
                             <td>C$${currentFactura.propina.toFixed(2)}</td>
                         </tr>
                         <tr>
@@ -370,7 +373,7 @@
         ]);
         
         doc.autoTable({
-            startY: 65 ,
+            startY: 65,
             head: [['PRODUCTOS', 'PRECIO UNITARIO', 'CANTIDAD', 'TOTAL']],
             body: productosData,
             margin: { left: 15, right: 15 },
@@ -381,7 +384,7 @@
         // Totales
         const finalY = doc.lastAutoTable.finalY + 10;
         doc.text(`SUBTOTAL: C$${currentFactura.subtotal.toFixed(2)}`, 160, finalY, { align: 'right' });
-        doc.text(`PROPINA (10%): C$${currentFactura.propina.toFixed(2)}`, 160, finalY + 8, { align: 'right' });
+        doc.text(`PROPINA: C$${currentFactura.propina.toFixed(2)}`, 160, finalY + 8, { align: 'right' });
         doc.setFont('helvetica', 'bold');
         doc.text(`TOTAL: C$${currentFactura.monto.toFixed(2)}`, 160, finalY + 16, { align: 'right' });
         

@@ -62,11 +62,12 @@
               <div class="col-12">
                 <form action="{{ url_for('finalizar', mesa_id=info[0]['mesa_id']) }}" method="POST">
                   <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="propinaSwitch" name="propina" value="1">
-                    <label class="form-check-label" for="propinaSwitch">¿Incluir propina?</label>
+                    <input class="form-check-input" type="checkbox" id="propinaSwitch" name="propina" value="1" checked>
+                    <label class="form-check-label" for="propinaSwitch">¿Incluir propina (10%)?</label>
+                    <input type="hidden" id="propinaValue" name="propina_value" value="{{ "%.2f"|format(info[0]['total_monto'] * 0.10) }}">
                   </div>
-                  <button type="submit" class="btn btn-primary w-100 text-center">
-                    🛒 Finalizar
+                  <button type="submit" class="btn btn-primary w-100 text-center mt-2">
+                    🛒 Finalizar Pedido
                   </button>
                 </form>
               </div>
@@ -76,21 +77,28 @@
     </div>
   </div>
 
-  <!-- JavaScript para actualizar el total -->
+  <!-- JavaScript exclusivo para manejo de propina -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-        let propinaSwitch = document.getElementById("propinaSwitch");
-        let subtotal = parseFloat(document.getElementById("subtotal").innerText);
-        let propina = parseFloat(document.getElementById("propina").innerText);
-        let totalElement = document.getElementById("total");
+        const propinaSwitch = document.getElementById("propinaSwitch");
+        const propinaValue = document.getElementById("propinaValue");
+        const subtotal = parseFloat(document.getElementById("subtotal").innerText);
+        const propinaElement = document.getElementById("propina");
+        const totalElement = document.getElementById("total");
+        const propinaBase = parseFloat(propinaElement.innerText);
 
-        propinaSwitch.addEventListener("change", function () {
-            if (propinaSwitch.checked) {
-                totalElement.innerText = (subtotal + propina).toFixed(2);
+        propinaSwitch.addEventListener("change", function() {
+            if (this.checked) {
+                totalElement.innerText = (subtotal + propinaBase).toFixed(2);
+                propinaValue.value = propinaBase.toFixed(2);
             } else {
                 totalElement.innerText = subtotal.toFixed(2);
+                propinaValue.value = "0.00";
             }
         });
+
+        // Inicializar con propina activada por defecto
+        propinaSwitch.dispatchEvent(new Event('change'));
     });
   </script>
 {% endblock %}
