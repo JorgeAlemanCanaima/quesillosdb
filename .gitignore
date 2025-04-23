@@ -36,3 +36,7 @@ instance/
 *.render.yaml
 *.render.yml
 *.render.json
+
+# Archivos de sesión de Flask
+flask_session/
+    
