@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 
 <head>
   <meta charset="utf-8">
@@ -12,8 +12,120 @@
 
   <style>
     .sidebar-nav {
-      max-height: 100vh; /* Limita la altura al tamaño de la ventana */
-      overflow-y: auto; /* Habilita el desplazamiento vertical */
+      max-height: 100vh;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 991.98px) {
+      .sidebar-nav {
+        max-height: calc(100vh - 60px);
+      }
+      
+      .brand-logo img {
+        width: 200px !important;
+        height: 100px !important;
+      }
+
+      .left-sidebar {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        height: 100%;
+        z-index: 1030;
+        transition: all 0.3s ease;
+        background-color: #fff;
+        box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        width: 260px;
+      }
+
+      .left-sidebar.show {
+        left: 0;
+      }
+
+      .body-wrapper {
+        margin-left: 0 !important;
+      }
+    }
+
+    @media (max-width: 767.98px) {
+      .brand-logo img {
+        width: 150px !important;
+        height: 75px !important;
+      }
+      
+      .navbar-nav {
+        padding: 0.5rem;
+      }
+      
+      .container-fluid {
+        padding: 0.5rem;
+      }
+    }
+
+    .sidebar-link {
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-link:hover {
+      background-color: rgba(0,0,0,0.05);
+    }
+
+    .nav-icon-hover {
+      transition: all 0.3s ease;
+    }
+
+    .nav-icon-hover:hover {
+      transform: scale(1.1);
+    }
+
+    .dropdown-menu {
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .alert {
+      margin: 0.5rem;
+      border-radius: 0.5rem;
+    }
+
+    .mobile-toggle {
+      display: none;
+    }
+
+    @media (max-width: 991.98px) {
+      .mobile-toggle {
+        display: block;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1031;
+        background: #fff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        border: none;
+        cursor: pointer;
+      }
+
+      .mobile-toggle i {
+        font-size: 1.2rem;
+        color: #333;
+      }
+
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1029;
+      }
+
+      .sidebar-overlay.show {
+        display: block;
+      }
     }
   </style>
   {% block extra_head %} {% endblock %}
@@ -23,21 +135,30 @@
   <!--  Body Wrapper -->
   <div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
     data-sidebar-position="fixed" data-header-position="fixed">
+    
+    <!-- Botón de toggle para móvil -->
+    <button class="mobile-toggle d-lg-none" id="mobileSidebarToggle">
+      <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Overlay para cerrar sidebar en móvil -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar Start -->
     <aside class="left-sidebar">
       <!-- Sidebar scroll-->
       <div>
         <div class="brand-logo d-flex align-items-center justify-content-between">
           <a href="" class="text-nowrap logo-img">
-            <img src="../static/images/logos/logo.jpg" class="img-fluid" alt="" width="300px" height="150px"/>
+            <img src="../static/images/logos/logo.jpg" class="img-fluid" alt="Logo" width="300" height="150"/>
           </a>
           <div class="close-btn d-xl-none d-block sidebartoggler cursor-pointer" id="sidebarCollapse">
-            <i class="ti ti-x fs-8"></i>
+            <i class="bi bi-x-lg"></i>
           </div>
         </div>
         <!-- Sidebar navigation-->
         <nav class="sidebar-nav scroll-sidebar" data-simplebar="">
-          <ul id="sidebarnav">
+          <ul id="sidebarnav" class="p-0">
             <li class="nav-small-cap">
               <i class="ti ti-dots nav-small-cap-icon fs-6"></i>
               <span class="hide-menu">Home</span>
@@ -147,7 +268,7 @@
               <li class="nav-item dropdown">
                 <a class="nav-link nav-icon-hover" href="javascript:void(0)" id="drop2" data-bs-toggle="dropdown"
                   aria-expanded="false">
-                  <img src="../static/images/logos/negro.jpeg" alt="" width="35" height="35" class="rounded-circle">
+                  <img src="../static/images/logos/negro.jpeg" alt="Usuario" width="35" height="35" class="rounded-circle">
                 </a>
                 <div class="dropdown-menu dropdown-menu-end dropdown-menu-animate-up" aria-labelledby="drop2">
                   <div class="message-body">
@@ -188,6 +309,108 @@
   <script src="../static/js/sidebarmenu.js"></script>
   <script src="../static/js/app.min.js"></script>
   <script src="../static/js/dashboard.js"></script>
+
+  <!-- Script para manejar el sidebar en móvil -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Elementos del DOM
+      const sidebar = document.querySelector('.left-sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const mobileToggle = document.getElementById('mobileSidebarToggle');
+      const closeBtn = document.getElementById('sidebarCollapse');
+      
+      // Función para mostrar/ocultar el sidebar
+      function toggleSidebar() {
+        console.log('Toggle sidebar clicked');
+        
+        // Asegurarse de que el sidebar tenga la clase show
+        if (sidebar.classList.contains('show')) {
+          sidebar.classList.remove('show');
+          overlay.classList.remove('show');
+          document.body.style.overflow = '';
+        } else {
+          sidebar.classList.add('show');
+          overlay.classList.add('show');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+      
+      // Event listeners
+      if (mobileToggle) {
+        mobileToggle.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Mobile toggle clicked');
+          toggleSidebar();
+        });
+      }
+      
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Close button clicked');
+          toggleSidebar();
+        });
+      }
+      
+      if (overlay) {
+        overlay.addEventListener('click', function() {
+          console.log('Overlay clicked');
+          toggleSidebar();
+        });
+      }
+      
+      // Cerrar sidebar al hacer clic en un enlace
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', function() {
+          if (window.innerWidth < 992) {
+            toggleSidebar();
+          }
+        });
+      });
+      
+      // Verificar si estamos en un dispositivo móvil
+      function isMobile() {
+        return window.innerWidth < 992;
+      }
+      
+      // Inicializar el sidebar según el tamaño de la pantalla
+      if (isMobile()) {
+        console.log('Mobile device detected');
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+      }
+      
+      // Asegurarse de que el sidebar tenga un ancho definido
+      if (sidebar) {
+        sidebar.style.width = '260px';
+      }
+      
+      // Forzar la visibilidad del sidebar en móvil
+      if (isMobile()) {
+        // Asegurarse de que el sidebar tenga un fondo blanco y sea visible
+        sidebar.style.backgroundColor = '#fff';
+        sidebar.style.boxShadow = '0 0 15px rgba(0,0,0,0.1)';
+        
+        // Asegurarse de que el sidebar tenga un z-index alto
+        sidebar.style.zIndex = '1030';
+        
+        // Asegurarse de que el sidebar tenga un ancho definido
+        sidebar.style.width = '260px';
+        
+        // Asegurarse de que el sidebar tenga una transición suave
+        sidebar.style.transition = 'all 0.3s ease';
+        
+        // Asegurarse de que el sidebar tenga una posición fija
+        sidebar.style.position = 'fixed';
+        sidebar.style.top = '0';
+        sidebar.style.left = '-260px';
+        sidebar.style.height = '100%';
+      }
+    });
+  </script>
 </body>
 
 </html>

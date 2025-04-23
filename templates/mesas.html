@@ -6,72 +6,310 @@
 
 {% block extra_head %}
 <style>
-
+    /* Estilos generales */
+    .mesas-container {
+        padding: 2rem;
+        background-color: #f9f5f0;
+        min-height: calc(100vh - 60px);
+    }
+    
+    .mesas-title {
+        margin-bottom: 2.5rem;
+        color: #5d4037;
+        font-weight: 700;
+        position: relative;
+        padding-bottom: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 2.2rem;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .mesas-title:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 120px;
+        height: 4px;
+        background: linear-gradient(to right, #8d6e63, #d7ccc8);
+        border-radius: 4px;
+    }
+    
+    .mesas-title:before {
+        content: '🍽️';
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2rem;
+    }
+    
+    /* Estilos para las tarjetas de mesas */
     .mesa-card {
-        border: 1px solid #ddd;
-        border-radius: 10px;
+        border: none;
+        border-radius: 12px;
         text-align: center;
-        padding: 15px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        padding: 1.8rem 1.2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        transition: all 0.4s ease;
+        background-color: #fff;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(141, 110, 99, 0.1);
     }
-    .mesa-card h5.normal{
-        background-color: #28a745;
-        color: white;
-        padding: 5px;
-        border-radius: 5px;
+    
+    .mesa-card:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 5px;
+        background: linear-gradient(to right, #8d6e63, #d7ccc8);
+    }
+    
+    .mesa-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+    
+    .mesa-status {
+        padding: 0.6rem 1.2rem;
+        border-radius: 50px;
         font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1.2rem;
+        display: inline-block;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
     }
-    .mesa-card h5.atendida {
-        background-color: red !important;
+    
+    .mesa-status.normal {
+        background: linear-gradient(45deg, #4caf50, #8bc34a);
         color: white;
-        padding: 5px;
-        border-radius: 5px;
-        font-size: 1rem;
     }
-    .mesa-card img {
+    
+    .mesa-status.atendida {
+        background: linear-gradient(45deg, #f44336, #ff5722);
+        color: white;
+    }
+    
+    .mesa-image-container {
+        position: relative;
+        margin: 0 auto 1.5rem;
+        width: 130px;
+        height: 130px;
+    }
+    
+    .mesa-image {
         border-radius: 50%;
-        width: 100px;
-        height: 100px;
-        margin: 10px 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border: 6px solid #f5f5f5;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: all 0.4s ease;
+        background-color: #fff;
     }
+    
+    .mesa-card:hover .mesa-image {
+        transform: scale(1.08);
+        border-color: #d7ccc8;
+    }
+    
+    .mesa-image-container:after {
+        content: '';
+        position: absolute;
+        top: -5px;
+        left: -5px;
+        right: -5px;
+        bottom: -5px;
+        border-radius: 50%;
+        border: 2px dashed #d7ccc8;
+        animation: rotate 20s linear infinite;
+    }
+    
+    @keyframes rotate {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+    
+    .mesa-name {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 1.2rem;
+        color: #5d4037;
+        font-family: 'Playfair Display', serif;
+    }
+    
     .btn-atender {
-        font-size: 0.8rem;
-        padding: 5px 10px;
-        width: 80px;
-        margin: 10px auto 0;
+        font-size: 0.95rem;
+        padding: 0.6rem 1.5rem;
+        border-radius: 50px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        width: auto;
+        min-width: 130px;
+        margin: 0 auto;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
-      </style>
+    
+    .btn-atender:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 7px 15px rgba(0,0,0,0.15);
+    }
+    
+    .btn-atender.btn-primary {
+        background: linear-gradient(45deg, #8d6e63, #bcaaa4);
+        border: none;
+    }
+    
+    .btn-atender.btn-danger {
+        background: linear-gradient(45deg, #d32f2f, #f44336);
+        border: none;
+    }
+    
+    .mesa-info {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: #8d6e63;
+        font-style: italic;
+    }
+    
+    /* Estilos responsivos */
+    @media (max-width: 1199.98px) {
+        .mesa-image-container {
+            width: 110px;
+            height: 110px;
+        }
+        
+        .mesas-title {
+            font-size: 2rem;
+        }
+    }
+    
+    @media (max-width: 991.98px) {
+        .mesas-container {
+            padding: 1.5rem;
+        }
+        
+        .mesa-card {
+            padding: 1.5rem 1rem;
+        }
+        
+        .mesa-image-container {
+            width: 100px;
+            height: 100px;
+        }
+        
+        .mesas-title {
+            font-size: 1.8rem;
+        }
+    }
+    
+    @media (max-width: 767.98px) {
+        .mesas-title {
+            font-size: 1.6rem;
+            margin-bottom: 2rem;
+        }
+        
+        .mesa-card {
+            padding: 1.2rem 1rem;
+        }
+        
+        .mesa-image-container {
+            width: 90px;
+            height: 90px;
+        }
+        
+        .mesa-name {
+            font-size: 1.2rem;
+        }
+        
+        .btn-atender {
+            font-size: 0.85rem;
+            padding: 0.5rem 1.2rem;
+            min-width: 120px;
+        }
+    }
+    
+    @media (max-width: 575.98px) {
+        .mesas-container {
+            padding: 1rem;
+        }
+        
+        .mesa-card {
+            margin-bottom: 1.5rem;
+        }
+        
+        .mesa-image-container {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .mesas-title {
+            font-size: 1.4rem;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block main %}
   <!-- Contenedor con las mesas -->
-  <div class="container-fluid">
-    <h1 class="text-center">Mesas</h1>
+  <div class="mesas-container">
+    <h1 class="text-center mesas-title">Nuestras Mesas</h1>
+    
     <div class="row">
-        
-
         {% for mesa in mesas %}
-            {% if not mesa.atendida %}
-            <div class="col-lg-3">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
                 <div class="mesa-card">
-                    <h5 class="normal">{{ mesa.nombre }}</h5>
-                    <img src="../static/images/logos/{{ mesa.imagen or 'mesa.webp' }}" alt="{{ mesa.nombre }}">
-                    <a class="btn btn-primary btn-atender" href="{{ url_for('products', mesa_id=mesa.id) }}">Atender</a>
-    
+                    <div>
+                        <div class="mesa-status {% if mesa.atendida %}atendida{% else %}normal{% endif %}">
+                            {{ mesa.nombre }}
+                        </div>
+                        
+                        <div class="mesa-image-container">
+                            <img src="../static/images/logos/{{ mesa.imagen or 'mesa.webp' }}" 
+                                 alt="{{ mesa.nombre }}" 
+                                 class="mesa-image">
+                        </div>
+                        
+                        <div class="mesa-info">
+                            {% if not mesa.atendida %}
+                                Disponible para atender
+                            {% else %}
+                                Mesa en servicio
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        {% if not mesa.atendida %}
+                            <a class="btn btn-primary btn-atender" href="{{ url_for('products', mesa_id=mesa.id) }}">
+                                <i class="bi bi-cart-plus me-1"></i> Atender
+                            </a>
+                        {% else %}
+                            <a class="btn btn-danger btn-atender" href="{{ url_for('finalizar', mesa_id=mesa.id) }}">
+                                <i class="bi bi-eye me-1"></i> Ver Mesa
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-            {% else %}
-            <div class="col-lg-3">
-                <div class="mesa-card">
-                    <h5 class="atendida">{{ mesa.nombre }}</h5>
-                    <img src="../static/images/logos/{{ mesa.imagen or 'mesa.webp' }}" alt="{{ mesa.nombre }}">
-                    <a class="btn btn-primary btn-atender" href="{{ url_for('finalizar', mesa_id=mesa.id) }}">Ver Mesa</a>
-    
-                </div>
-            </div>
-            {% endif%}
-
         {% endfor %}
     </div>
   </div>
