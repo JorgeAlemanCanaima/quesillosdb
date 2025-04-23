@@ -20,7 +20,37 @@ load_dotenv()
 
 app = Flask(__name__)
 
+def role_required(roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if session.get("user_id") is None:
+                return redirect("/login")
+            
+            cursor = connection.cursor()
+            cursor.execute("SELECT rol FROM usuario_empleado WHERE id = ?", (session.get("user_id"),))
+            user = cursor.fetchone()
+            
+            if not user or user['rol'] not in roles:
+                flash("No tienes permiso para acceder a esta página", "error")
+                return redirect(url_for('mesas1'))
+                
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
+def login_required(f):
+    """
+    Decorate routes to require login.
+
+    https://flask.palletsprojects.com/en/1.1.x/patterns/viewdecorators/
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get("user_id") is None:
+            return redirect("/login")
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.after_request
 def add_header(response):
@@ -184,6 +214,8 @@ from flask import render_template
 import sqlite3
 
 @app.route('/historial')
+@login_required
+@role_required(['admin']) 
 def historial():
     try:
         cursor = connection.cursor()
@@ -299,6 +331,8 @@ def historial():
 
         
 @app.route('/exportar_todas_metricas')
+@login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def exportar_todas_metricas():
     conn = sqlite3.connect('quesillos.db')
 
@@ -388,22 +422,6 @@ def verify_otp():
 
 
 
-def login_required(f):
-    """
-    Decorate routes to require login.
-
-    https://flask.palletsprojects.com/en/1.1.x/patterns/viewdecorators/
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if session.get("user_id") is None:
-            return redirect("/login")
-        return f(*args, **kwargs)
-    return decorated_function
-
-#ruta para el cierre de sesion
-
-
 # Ruta para la página de inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -421,22 +439,25 @@ def login():
             
             if not user:
                 flash("Usuario o contraseña incorrectos.", "error")
-                return redirect(url_for('login'))  # Redirige y activa el modal
-
+                return redirect(url_for('login'))
 
             else:
-                session['user_id'] = user[0]  # Ajusta el índice según la estructura de tu tabla
-                session['username'] = username  # Almacena el nombre de usuario si lo necesitas
+                session['user_id'] = user[0]
+                session['username'] = username
+                session['rol'] = user['rol']
                 print("Sesión iniciada correctamente")
                 print("User ID guardado en la sesión:", session.get('user_id'))
+                print("Rol guardado en la sesión:", session.get('rol'))
 
-                return redirect(url_for('index'))
+                return redirect(url_for('mesas1'))
         except:
             print("Error en la consulta:")
             flash("Error al procesar la solicitud. Intenta nuevamente.")
             return redirect(url_for('login'))
     
     return render_template('login.html')
+
+
 
 #cierre de sesion
 @app.route("/logout", methods=['POST'])
@@ -463,10 +484,22 @@ def index():
 #ruta para el renderizado del login
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def usuarios():
     if request.method == 'POST':
         user = request.form['usuario']
         contra = request.form['password']
+        rol = request.form.get('rol', 'mesero')  # Por defecto es mesero
+        try:
+            cursor = connection.cursor()
+            cursor.execute("""
+                INSERT INTO usuario_empleado (nombre_user, contra_user, rol) VALUES (?, ?, ?)
+            """, (user, contra, rol))
+            connection.commit()
+            flash("Usuario creado correctamente")
+            return redirect(url_for('usuarios'))
+        except:
+            flash("No se pudo crear el usuario")
     else:
         try:
             cursor = connection.cursor()
@@ -481,14 +514,13 @@ def usuarios():
 #ruta para el ingreso de productos
 @app.route('/ingresoproducto', methods=['GET', 'POST'])
 @login_required
+@role_required(['admin', 'mesero'])  # Permitir acceso a admin y mesero
 def ingresoproducto():
     if request.method == 'POST':
         nombre = request.form['nombre']
         precio = float(request.form['precio'])
         categoria = request.form.get('categoria')
         print(categoria)
-        #codigo = request.form['codigo']
-        #cantidad = request.form['cantidad']
         try:
             cursor = connection.cursor()
             cursor.execute("""
@@ -507,6 +539,7 @@ def ingresoproducto():
 #Ruta en la que podemos ver todo el listado de platillos y bebidas
 @app.route('/catalogoproductos', methods=['GET', 'POST'])
 @login_required
+@role_required(['admin', 'mesero'])  # Solo administradores pueden acceder
 def catalogoproductos():
     try:
         cursor = connection.cursor()
@@ -526,6 +559,7 @@ def catalogoproductos():
 #Ruta en la que podemos ver todo el listado de platillos y bebidas
 @app.route('/entradaproducto', methods=['GET', 'POST'])
 @login_required
+@role_required(['admin', 'mesero'])  # Permitir acceso a admin y mesero
 def entradaproductos():
     try:
         cursor = connection.cursor()
@@ -630,6 +664,7 @@ def editar_cliente(id):
 #solicitudes fetch para actualizar el valor de los productos
 @app.route('/productos/editar/<int:id>', methods=['POST'])
 @login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def editar_producto(id):
     nombre = request.form['nombre']
     precio = request.form['precio']
@@ -695,6 +730,7 @@ def testi():
 
 # Ruta para obtener productos de una categoría específica
 @app.route('/products/<categoryName>')
+@login_required
 def get_products(categoryName):
     cursor = connection.cursor()
     query = "SELECT id, nombre, precio FROM productos WHERE categoria = ?"  # Ajusta el nombre de tu tabla y columnas según sea necesario
@@ -895,6 +931,7 @@ def finalizar(mesa_id):
 
 @app.route('/facturacion', methods=['GET', 'POST'])
 @login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def facturacion():
     try:
         # Obtener parámetros de filtrado
@@ -981,6 +1018,8 @@ def facturacion():
         return redirect(url_for('index'))
 
 @app.route('/registro_empleado', methods=['GET', 'POST'])
+@login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def empleados():
     if request.method == 'POST':
         nombre = request.form['nombre']
@@ -1005,6 +1044,8 @@ def empleados():
 
 
 @app.route('/empleados')
+@login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def mostrar_empleados():
     try:
         cursor = connection.cursor()
@@ -1017,6 +1058,8 @@ def mostrar_empleados():
 
 
 @app.route("/eliminar_producto/<int:id>", methods=["DELETE"])
+@login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def eliminar_producto(id):
     try:
         conn = sqlite3.connect("quesillos.db")
@@ -1032,17 +1075,12 @@ def eliminar_producto(id):
 
 @app.route('/registro', methods=['GET', 'POST'])
 @login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def registro():
     cursor = connection.cursor()
-
-    # Obtener productos para el select
     cursor.execute("SELECT id, nombre FROM productos")
     productos = cursor.fetchall()
-
-    # Obtener parámetro de filtro desde la URL
     rango_fecha = request.args.get('rango_fecha')
-
-    # Base de la consulta SQL
     query = '''
         SELECT 
             ei.id AS entrada_id,
@@ -1057,11 +1095,8 @@ def registro():
     '''
     filters = []
     params = []
-
-    # Filtrar por rango de fechas (misma lógica que facturación)
     if rango_fecha and rango_fecha.lower() != "todos":
         hoy = datetime.now()
-
         if rango_fecha == "hoy":
             inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
         elif rango_fecha == "ultimos_7_dias":
@@ -1070,25 +1105,14 @@ def registro():
             inicio = hoy - timedelta(days=30)
         else:
             inicio = None
-
         if inicio:
             filters.append("ei.fecha_entrada >= ?")
             params.append(inicio.strftime('%Y-%m-%d %H:%M:%S'))
-
-    # Aplicar los filtros a la consulta
     if filters:
         query += " WHERE " + " AND ".join(filters)
-
-    query += " ORDER BY ei.fecha_entrada DESC"  # Ordenar por fecha descendente
-
-    # Depuración: Imprimir la consulta y los parámetros
-    print("Consulta generada:", query)
-    print("Parámetros:", params)
-
-    # Ejecutar la consulta
+    query += " ORDER BY ei.fecha_entrada DESC"
     cursor.execute(query, params)
     entradas = cursor.fetchall()
-
     return render_template("registro.html", 
                          registro=entradas, 
                          productos=productos,
@@ -1099,6 +1123,7 @@ def registro():
 # Ruta para mostrar formulario de edición
 @app.route('/registro/editar/<int:id>', methods=['GET'])
 @login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def mostrar_editar_registro(id):
     cursor = connection.cursor()
     
@@ -1122,6 +1147,7 @@ def mostrar_editar_registro(id):
 
 @app.route('/registro/editar', methods=['POST'])
 @login_required
+@role_required(['admin'])  # Solo administradores pueden acceder
 def editar_registro():
     # Obtener datos del formulario
     entrada_id = request.form['id']

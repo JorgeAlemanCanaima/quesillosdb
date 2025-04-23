@@ -161,6 +161,7 @@
           <ul id="sidebarnav" class="p-0">
           
             
+            
             <li class="nav-small-cap">
               <i class="ti ti-dots nav-small-cap-icon fs-6"></i>
               <span class="hide-menu">Operaciones</span>
@@ -173,6 +174,7 @@
                 <span class="hide-menu">Pedidos</span>
               </a>
             </li>
+            {% if session.get('rol') in ['admin', 'mesero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('clientes') }}" aria-expanded="false">
                 <span>
@@ -181,6 +183,8 @@
                 <span class="hide-menu">Clientes</span>
               </a>
             </li>
+            {% endif %}
+            {% if session.get('rol') in ['admin', 'cajero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('facturacion') }}" aria-expanded="false">
                 <span>
@@ -189,6 +193,8 @@
                 <span class="hide-menu">Historial de pedidos</span>
               </a>
             </li>
+            {% endif %}
+            {% if session.get('rol') in ['admin', 'mesero'] %}
             <li class="nav-small-cap">
               <i class="bi bi-boxes nav-small-cap-icon fs-6"></i>
               <span class="hide-menu">Platitllos y bebidas</span>
@@ -201,6 +207,16 @@
                 <span class="hide-menu">Entrada Producto</span>
               </a>
             </li>
+            <li class="sidebar-item">
+              <a class="sidebar-link" href="{{ url_for('ingresoproducto') }}" aria-expanded="false">
+                <span>
+                  <i class="bi bi-plus-square text-primary fs-6"></i>
+                </span>
+                <span class="hide-menu">Registrar producto</span>
+              </a>
+            </li>
+            {% endif %}
+            {% if session.get('rol') == 'admin' %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('registro') }}" aria-expanded="false">
                 <span>
@@ -226,14 +242,6 @@
               </a>
             </li>
             <li class="sidebar-item">
-              <a class="sidebar-link" href="{{ url_for('ingresoproducto') }}" aria-expanded="false">
-                <span>
-                  <i class="bi bi-plus-square text-primary fs-6"></i>
-                </span>
-                <span class="hide-menu">Registrar producto</span>
-              </a>
-            </li>
-            <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('mostrar_empleados') }}" aria-expanded="false">
                 <span>
                   <i class="bi bi-person-plus-fill text-success fs-6"></i>
@@ -241,6 +249,15 @@
                 <span class="hide-menu">Empleados Lista</span>
               </a>
             </li>
+            <li class="sidebar-item">
+              <a class="sidebar-link" href="{{ url_for('usuarios') }}" aria-expanded="false">
+                <span>
+                  <i class="bi bi-people-fill text-danger fs-6"></i>
+                </span>
+                <span class="hide-menu">Usuarios</span>
+              </a>
+            </li>
+            {% endif %}
           </ul>
         </nav>
         <!-- End Sidebar navigation -->
