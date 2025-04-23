@@ -186,12 +186,15 @@ def historial():
     try:
         cursor = connection.cursor()
 
-        #propinas totales
         cursor.execute("""
-            select propina 
-            from factura
+            SELECT SUM(f.propina)
+            FROM facturas f
+            JOIN pedidos p ON f.codigo = p.codigo_factura
+            WHERE f.propina IS NOT NULL
+            AND date(p.fecha_hora) = date('now')
         """)
         propinas_hoy = cursor.fetchone()[0] or 0
+
 
         # Ventas de hoy 
         cursor.execute("""
