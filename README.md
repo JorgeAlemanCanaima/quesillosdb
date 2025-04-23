@@ -24,7 +24,7 @@ Todo desarrollado con un enfoque profesional, minimalista y adaptado a las neces
 - **HTML5 / CSS3 / JS** — Interfaz limpia y funcional
 
 ## 📷 Capturas de Pantalla
-
+https://drive.google.com/file/d/1PPB9V1hYhkCSDtiAyUeDSP9tQwj8yDZV/view?usp=drive_link
 
 
 ## 📊 Funcionalidades
