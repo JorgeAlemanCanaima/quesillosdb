@@ -25,7 +25,7 @@ Todo desarrollado con un enfoque profesional, minimalista y adaptado a las neces
 
 ## 📷 Capturas de Pantalla
 
-> (Agregá aquí capturas del dashboard y otras secciones clave del sistema)
+
 
 ## 📊 Funcionalidades
 
@@ -38,11 +38,11 @@ Todo desarrollado con un enfoque profesional, minimalista y adaptado a las neces
 
 ## 🧑‍💻 Autor
 
-Desarrollado por [Tu Nombre], como parte de un proyecto freelance real para el restaurante **Quesillos Lo Nuestro**, ubicado en Nicaragua.
+Desarrollado por [https://github.com/JorgeAlemanCanaima], como parte de un proyecto freelance real para el restaurante **Quesillos Lo Nuestro**, ubicado en Nicaragua.
 
 - 💼 Experiencia en desarrollo web con Flask
 - 🎓 Prácticas técnicas en soporte e infraestructura
 - 🌎 Trabajos freelance para pequeños negocios locales
 
-## 📁 Estructura del Proyecto
+
 
