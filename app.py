@@ -10,7 +10,9 @@ import random
 import os
 from flask import Flask
 from flask_mail import Mail, Message
-
+import pandas as pd
+import io
+from flask import send_file
 
 
 # Cargar variables de entorno
@@ -296,7 +298,57 @@ def historial():
         return "Error al obtener datos históricos", 500
 
         
+@app.route('/exportar_todas_metricas')
+def exportar_todas_metricas():
+    conn = sqlite3.connect('quesillos.db')
 
+    # Métricas individuales
+    propinas_hoy = pd.read_sql_query("""
+        SELECT IFNULL(SUM(propina), 0) AS total 
+        FROM facturas 
+        WHERE DATE(fecha_creacion) = DATE('now')
+    """, conn).iloc[0, 0]
+
+    propinas_semana = pd.read_sql_query("""
+        SELECT IFNULL(SUM(propina), 0) AS total 
+        FROM facturas 
+        WHERE strftime('%W', fecha_creacion) = strftime('%W', 'now')
+          AND strftime('%Y', fecha_creacion) = strftime('%Y', 'now')
+    """, conn).iloc[0, 0]
+
+    propinas_mes = pd.read_sql_query("""
+        SELECT IFNULL(SUM(propina), 0) AS total 
+        FROM facturas 
+        WHERE strftime('%Y-%m', fecha_creacion) = strftime('%Y-%m', 'now')
+    """, conn).iloc[0, 0]
+
+    # DataFrame resumen
+    resumen_df = pd.DataFrame({
+        'Métrica': ['Propinas Hoy', 'Propinas Semana', 'Propinas Mes'],
+        'Monto (C$)': [propinas_hoy, propinas_semana, propinas_mes]
+    })
+
+    # Detalle por día
+    detalle_df = pd.read_sql_query("""
+        SELECT DATE(fecha_creacion) AS Fecha, 
+               SUM(propina) AS 'Propinas Diarias'
+        FROM facturas
+        GROUP BY DATE(fecha_creacion)
+        ORDER BY Fecha DESC
+    """, conn)
+
+    conn.close()
+
+    # Crear Excel en memoria
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        resumen_df.to_excel(writer, index=False, sheet_name='Resumen')
+        detalle_df.to_excel(writer, index=False, sheet_name='Detalle Diario')
+    output.seek(0)
+
+    return send_file(output, as_attachment=True,
+                     download_name='metricas_propinas.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/verify-otp', methods=['GET', 'POST'])
 def verify_otp():
