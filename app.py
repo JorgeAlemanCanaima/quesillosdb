@@ -395,15 +395,16 @@ def verify_otp():
             try:
                 # Buscar al usuario en la base de datos
                 cursor = connection.cursor()
-                cursor.execute("SELECT id, nombre_user FROM usuario_empleado WHERE email = ?", (email,))
+                cursor.execute("SELECT id, nombre_user, rol FROM usuario_empleado WHERE email = ?", (email,))
                 user = cursor.fetchone()
                 
                 if user:
                     # Establecer la sesión del usuario
                     session['user_id'] = user['id']
                     session['username'] = user['nombre_user']
+                    session['rol'] = user['rol']
                     flash("OTP verificado correctamente. Bienvenido!", "success")
-                    return redirect(url_for('index'))
+                    return redirect(url_for('mesas1'))
                 else:
                     flash("Usuario no encontrado.", "error")
                     return redirect(url_for('login'))
