@@ -453,18 +453,7 @@ def logout():
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
-    cursor = connection.cursor()
-    table = cursor.execute("""
-        SELECT strftime('%Y-%m-%d %H:%M', fecha_hora) AS fecha_hora, pedidos.id, 
-                   clientes.nombre AS cliente_nombre, empleados.nombre AS empleado_nombre, tipo_pedido 
-                    FROM pedidos JOIN clientes ON clientes.id = pedidos.clientes_id JOIN
-                   empleados ON empleados.id = pedidos.empleado_id
-    """)
-    table = cursor.fetchall()
-
-    print(table)
-        
-    return render_template("index.html", info=table)
+    return redirect(url_for('mesas1'))
 
 
 

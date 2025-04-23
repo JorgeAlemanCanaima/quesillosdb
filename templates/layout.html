@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quesillos lo nuestro {% block tite %} {% endblock %}</title>
+  <title>Quesillos lo nuestro {% block title %} {% endblock %}</title>
   <link rel="shortcut icon" type="image/png" href="../static/images/logos/logo.jpg" />
   <link rel="stylesheet" href="../static/css/styles.min.css" />
   <!-- Bootstrap Icons CDN -->
@@ -159,18 +159,8 @@
         <!-- Sidebar navigation-->
         <nav class="sidebar-nav scroll-sidebar" data-simplebar="">
           <ul id="sidebarnav" class="p-0">
-            <li class="nav-small-cap">
-              <i class="ti ti-dots nav-small-cap-icon fs-6"></i>
-              <span class="hide-menu">Home</span>
-            </li>
-            <li class="sidebar-item">
-              <a class="sidebar-link" href="{{ url_for('index') }}" aria-expanded="false">
-                <span>
-                  <i class="bi bi-house-door text-info fs-6"></i>
-                </span>
-                <span class="hide-menu">Página principal</span>
-              </a>
-            </li>
+          
+            
             <li class="nav-small-cap">
               <i class="ti ti-dots nav-small-cap-icon fs-6"></i>
               <span class="hide-menu">Operaciones</span>
