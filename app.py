@@ -279,7 +279,7 @@ def historial():
             mes = int(row[0]) - 1
             ventas_mensuales[mes] = row[1] or 0
 
-        # Ventas totales
+         
         cursor.execute("""
             SELECT SUM(f.monto)
             FROM facturas f
