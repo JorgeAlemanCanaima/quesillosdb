@@ -31,6 +31,7 @@
               <tr class="border-2 border-bottom border-primary border-0"> 
                 <th scope="col" class="ps-0">Codigo del producto</th>
                 <th scope="col" >Nombre</th>
+                <th scope="col" >Stock</th>
                 <th scope="col" >Precio de venta</th>
                 <th scope="col" >Categoria</th>
 
@@ -41,7 +42,9 @@
               {% for i in info %}
                 <tr>
                   <td>{{ i['id'] }} </td>
+                  
                   <td>{{ i['nombre']  }} </td>
+                  <td>{{ i['stock'] }} </td>
                   <td>{{ i['precio'] }} </td>
                   <td>{{ i['categoria'] }} </td>
                   <td>
