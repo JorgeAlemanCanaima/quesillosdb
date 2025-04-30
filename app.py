@@ -576,20 +576,28 @@ def entradaproductos():
 @login_required
 def registrar_pedido():
     try:
-        # Obtener los datos del formulario
-        proveedor = request.form['proveedor']  # Nuevo campo
-        cantidad = request.form['cantidad']
+        proveedor = request.form['proveedor']
+        cantidad = int(request.form['cantidad'])  # Aseguramos que sea número
         costo = request.form['costo']
         fecha = request.form['fecha']
         producto_id = request.form['producto_id']
         
-        # Inserción en la tabla pedidos
         cursor = connection.cursor()
+        
+        # Insertar en entradas_inventario
         cursor.execute("""
             INSERT INTO entradas_inventario 
             (proveedor, fecha_entrada, cantidad_ingresada, costo_unitario, producto_id)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (proveedor, fecha, cantidad, costo, producto_id))  # 5 parámetros ahora
+            VALUES (?, ?, ?, ?, ?)
+        """, (proveedor, fecha, cantidad, costo, producto_id))
+
+        # Actualizar el stock en productos
+        cursor.execute("""
+            UPDATE productos
+            SET stock = stock + ?
+            WHERE id = ?
+        """, (cantidad, producto_id))
+
         connection.commit()
         flash('Entrada registrada correctamente.', 'success')
     except Exception as e:
@@ -598,6 +606,7 @@ def registrar_pedido():
     
     return redirect(url_for('registro'))
 
+
 @app.route('/registrar_producto_ajax', methods=['POST'])
 @login_required
 def registrar_producto_ajax():
@@ -605,27 +614,38 @@ def registrar_producto_ajax():
         data = request.json
         proveedor = data['proveedor']
         producto_id = data['producto_id']
-        cantidad = data['cantidad']
+        cantidad = int(data['cantidad'])  # Aseguramos que sea número
         costo = data['costo']
         fecha = data['fecha']
 
         cursor = connection.cursor()
+
+        # Insertar en entradas_inventario
         cursor.execute("""
             INSERT INTO entradas_inventario 
             (proveedor, fecha_entrada, cantidad_ingresada, costo_unitario, producto_id)
             VALUES (?, ?, ?, ?, ?)
         """, (proveedor, fecha, cantidad, costo, producto_id))
+
+        # Actualizar el stock en productos
+        cursor.execute("""
+            UPDATE productos
+            SET stock = stock + ?
+            WHERE id = ?
+        """, (cantidad, producto_id))
+
         connection.commit()
 
         return jsonify({
-            'status': 'success', 
+            'status': 'success',
             'message': 'Entrada registrada correctamente'
         })
     except Exception as e:
         return jsonify({
             'status': 'error',
             'message': str(e)
-    }),500
+        }), 500
+
 
 
 #mostrar clientes
