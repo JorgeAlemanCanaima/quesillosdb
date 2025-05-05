@@ -754,7 +754,7 @@ def testi():
 @login_required
 def get_products(categoryName):
     cursor = connection.cursor()
-    query = "SELECT id, nombre, precio FROM productos WHERE categoria = ?"  # Ajusta el nombre de tu tabla y columnas según sea necesario
+    query = "SELECT id, nombre, precio, stock FROM productos WHERE categoria = ?"  # Agregamos stock a la consulta
     cursor.execute(query, (categoryName,))
     products = cursor.fetchall()
     print(f"Category ID: {categoryName}")
@@ -762,7 +762,7 @@ def get_products(categoryName):
     print(products)
     
     # Convertimos los resultados en una lista de diccionarios
-    product_list = [{"id": row[0], "nombre": row[1], "precio": row[2]} for row in products]
+    product_list = [{"id": row[0], "nombre": row[1], "precio": row[2], "stock": row[3]} for row in products]
     print(product_list)
     return jsonify(product_list)
 
@@ -784,6 +784,15 @@ def atender_mesa(mesa_id):
 
     cursor = connection.cursor()
     try:
+        # Verificar stock disponible antes de procesar el pedido
+        for item in order_data:
+            cursor.execute("SELECT stock FROM productos WHERE id = ?", (item['id'],))
+            producto = cursor.fetchone()
+            if not producto or producto['stock'] < item['cantidad']:
+                return jsonify({
+                    "error": f"Stock insuficiente para el producto ID {item['id']}"
+                }), 400
+
         # Cambiar el estado de la mesa
         for mesa in mesas:
             if mesa_id > 13:
@@ -805,7 +814,6 @@ def atender_mesa(mesa_id):
         codigo = codigo['codigo'] + 1
         print(codigo)
         
-        
         cursor.execute("""
             INSERT INTO pedidos (fecha_hora, tipo_pedido, empleado_id, clientes_id, codigo_factura)
             VALUES (?, ?, ?, ?, ?)
@@ -814,31 +822,34 @@ def atender_mesa(mesa_id):
         # Obtener el ID del último pedido para la insercion del nuevo pedido con el id correspondiente
         pedido_id = cursor.lastrowid
         total_monto = 0
-        # Insertar los productos del pedido
+        # Insertar los productos del pedido y actualizar el stock
         for item in order_data:
             cursor.execute("""
                 INSERT INTO pedido_productos (pedido_id, producto_id, cantidad)
                 VALUES (?, ?, ?)
             """, (pedido_id, item['id'], item['cantidad']))
             total_monto += float(item['total'])
+            
+            # Actualizar el stock del producto
+            cursor.execute("""
+                UPDATE productos 
+                SET stock = stock - ? 
+                WHERE id = ?
+            """, (item['cantidad'], item['id']))
         
         print(total_monto)
         cursor.execute('''INSERT INTO FACTURAS (codigo, monto, estado) 
                        VALUES (?, ?, ?)''', (codigo, total_monto, 'pendiente'))
              
         # Confirmar cambios
-        #
         connection.commit()
 
         return jsonify({"message": "Pedido guardado con éxito", "redirect": url_for('mesas1')}), 200
-
 
     except Exception as e:
         print(f"Error al procesar el pedido: {e}")
         connection.rollback()
         return jsonify({"error": "Error interno del servidor"}), 500
-    
-
 
 @app.route('/finalizar/<int:mesa_id>', methods=['GET', 'POST'])
 @login_required
@@ -1303,6 +1314,15 @@ def editar_pedidos(pedido_id):
         print(f"Error al procesar el pedido: {e}")
         connection.rollback()
         return jsonify({"error": "Error interno del servidor"}), 500
+
+@app.route('/all_products')
+@login_required
+def get_all_products():
+    cursor = connection.cursor()
+    cursor.execute("SELECT id, nombre, precio, stock FROM productos")
+    products = cursor.fetchall()
+    product_list = [{"id": row[0], "nombre": row[1], "precio": row[2], "stock": row[3]} for row in products]
+    return jsonify(product_list)
 
 if __name__ == '__main__':
     app.run(debug=True)
