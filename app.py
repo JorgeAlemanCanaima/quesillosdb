@@ -877,7 +877,11 @@ def finalizar(mesa_id):
             print(f'ID del pedido {pedido_id}')
 
             incluir_propina = request.form.get('propina')  
+            tipo_pago = request.form.get('tipo_pago')  # Obtener el tipo de pago
+            tipo_tarjeta = request.form.get('tipo_tarjeta') if tipo_pago == 'tarjeta' else None  # Obtener el tipo de tarjeta si es pago con tarjeta
             print(f'Valor del checkbox {incluir_propina}')
+            print(f'Tipo de pago: {tipo_pago}')
+            print(f'Tipo de tarjeta: {tipo_tarjeta}')
 
             # Calcular la propina, por ejemplo, 10% del total
             cursor.execute('SELECT monto FROM facturas WHERE codigo = (SELECT codigo_factura FROM pedidos WHERE pedidos.id = ?)', (pedido_id,))
@@ -889,13 +893,15 @@ def finalizar(mesa_id):
             print(propina)
             nuevo_total = total_factura + propina
             
-            # ACTUALIZACIÓN MODIFICADA PARA INCLUIR LA COLUMNA PROPINA
+            # ACTUALIZACIÓN MODIFICADA PARA INCLUIR LA COLUMNA PROPINA, TIPO DE PAGO Y TIPO DE TARJETA
             cursor.execute('''UPDATE facturas 
                           SET estado = 'pagada', 
                               monto = ?,
-                              propina = ?
+                              propina = ?,
+                              tipo_pago = ?,
+                              tipo_tarjeta = ?
                           WHERE codigo = (SELECT codigo_factura FROM pedidos WHERE pedidos.id = ?)''', 
-                          (nuevo_total, propina, pedido_id))
+                          (nuevo_total, propina, tipo_pago, tipo_tarjeta, pedido_id))
             
         #manejo de errores 
         except Exception as e:
@@ -982,8 +988,10 @@ def facturacion():
                 p.fecha_hora, 
                 cl.num_mesa, 
                 p.id AS pedido_id,
-                e.nombre AS mesero,
-                f.propina  
+                e.nombre AS mesero,  
+                f.propina,
+                f.tipo_pago,
+                f.tipo_tarjeta
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
             JOIN clientes cl ON p.clientes_id = cl.id
