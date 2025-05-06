@@ -222,9 +222,10 @@ def historial():
 
         # Propinas de hoy
         cursor.execute("""
-            SELECT IFNULL(SUM(propina), 0) as total
-            FROM facturas
-            WHERE DATE(fecha_creacion) = DATE('now')
+            SELECT IFNULL(SUM(f.propina), 0) as total
+            FROM facturas f
+            JOIN pedidos p ON f.codigo = p.codigo_factura
+            WHERE date(p.fecha_hora) = date('now', 'localtime')
         """)
         propinas_hoy = cursor.fetchone()['total']
 
@@ -232,9 +233,10 @@ def historial():
 
         # Propinas de este mes
         cursor.execute("""
-            SELECT IFNULL(SUM(propina), 0) as total
-            FROM facturas
-            WHERE strftime('%Y-%m', fecha_creacion) = strftime('%Y-%m', 'now')
+            SELECT IFNULL(SUM(f.propina), 0) as total
+            FROM facturas f
+            JOIN pedidos p ON f.codigo = p.codigo_factura
+            WHERE strftime('%Y-%m', p.fecha_hora) = strftime('%Y-%m', 'now')
         """)
         propinas_mes = cursor.fetchone()['total']
 
