@@ -399,12 +399,8 @@ def verify_otp():
                 user = cursor.fetchone()
                 
                 if user:
-                    # Establecer la sesión del usuario
-                    session['user_id'] = user['id']
-                    session['username'] = user['nombre_user']
-                    session['rol'] = user['rol']
-                    flash("OTP verificado correctamente. Bienvenido!", "success")
-                    return redirect(url_for('mesas1'))
+                    flash("OTP verificado correctamente. Por favor, establece tu nueva contraseña.", "success")
+                    return redirect(url_for('change_password', email=email))
                 else:
                     flash("Usuario no encontrado.", "error")
                     return redirect(url_for('login'))
@@ -419,9 +415,39 @@ def verify_otp():
 
     return render_template('verify_otp.html')
 
+@app.route('/change-password', methods=['GET', 'POST'])
+def change_password():
+    email = request.args.get('email')
+    if not email:
+        flash("Error: No se proporcionó el correo electrónico.", "error")
+        return redirect(url_for('login'))
 
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        email = request.form.get('email')
 
+        if new_password != confirm_password:
+            flash("Las contraseñas no coinciden.", "error")
+            return redirect(url_for('change_password', email=email))
 
+        try:
+            cursor = connection.cursor()
+            cursor.execute("""
+                UPDATE usuario_empleado 
+                SET contra_user = ? 
+                WHERE email = ?
+            """, (new_password, email))
+            connection.commit()
+            
+            flash("Contraseña actualizada exitosamente. Por favor, inicia sesión con tu nueva contraseña.", "success")
+            return redirect(url_for('login'))
+        except sqlite3.Error as e:
+            print(f"[ERROR SQLite] {e}")
+            flash("Error al actualizar la contraseña.", "error")
+            return redirect(url_for('change_password', email=email))
+
+    return render_template('change_password.html', email=email)
 
 # Ruta para la página de inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
