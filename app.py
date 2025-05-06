@@ -241,11 +241,11 @@ def historial():
 
         # Ventas de hoy 
         cursor.execute("""
-            SELECT SUM(f.monto) as total 
-            FROM facturas f
-            JOIN pedidos p ON f.codigo = p.codigo_factura
-            WHERE date(p.fecha_hora) = date('now') 
-            AND f.estado = 'pagada'
+         SELECT SUM(f.monto) as total 
+        FROM facturas f
+        JOIN pedidos p ON f.codigo = p.codigo_factura
+        WHERE date(p.fecha_hora) = date('now', 'localtime') 
+        AND f.estado = 'pagada';
         """)
         ventas_dia = cursor.fetchone()[0] or 0
 
@@ -253,7 +253,7 @@ def historial():
         cursor.execute("""
             SELECT COUNT(*) 
             FROM pedidos 
-            WHERE date(fecha_hora) = date('now')
+            WHERE date(fecha_hora) =date('now', 'localtime') 
         """)
         ordenes_dia = cursor.fetchone()[0] or 0
 
@@ -261,7 +261,7 @@ def historial():
         cursor.execute("""
             SELECT COUNT(DISTINCT clientes_id) 
             FROM pedidos 
-            WHERE date(fecha_hora) = date('now')
+            WHERE date(fecha_hora) = date('now', 'localtime') 
         """)
         clientes_dia = cursor.fetchone()[0] or 0
 
