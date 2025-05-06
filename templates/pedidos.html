@@ -140,9 +140,10 @@
                 <thead>
                   <tr class="border-2 border-bottom border-primary border-0">
                     <th style="width: 12.00%;" class="flex-fill">ID</th>
-                    <th style="width: 40.00%;" class="flex-fill">Nombre</th>
+                    <th style="width: 30.00%;" class="flex-fill">Nombre</th>
+                    <th style="width: 15.00%;" class="flex-fill">Stock</th>
                     <th style="width: 23.00%;" class="flex-fill">Precio</th>
-                    <th style="width: 25.00%;" class="flex-fill">Accion</th>
+                    <th style="width: 20.00%;" class="flex-fill">Accion</th>
                   </tr>
                 </thead>
                 <tbody id="product-table-body">
@@ -245,31 +246,86 @@
                 row.innerHTML = `
                   <td>${product.id}</td>
                   <td>${product.nombre}</td>
+                  <td>${product.stock}</td>
                   <td>C$${Number(product.precio).toFixed(2)}</td>
-                  <td><button onclick="addToOrder(${product.id}, '${product.nombre}', ${product.precio})" class="btn btn-primary btn-sm">Añadir</button></td>
+                  <td><button onclick="addToOrder(${product.id}, '${product.nombre}', ${product.precio}, ${product.stock})" class="btn btn-primary btn-sm" ${product.stock <= 0 ? 'disabled' : ''}>Añadir</button></td>
                 `;
                 productTableBody.appendChild(row);
               });
             });
         }
     
-        function addToOrder(id, nombre, precio) {
+        function addToOrder(id, nombre, precio, stock) {
           const existingItem = orderItems.find(item => item.id === id);
           if (existingItem) {
-            existingItem.cantidad++;
+            if (existingItem.cantidad < stock) {
+              existingItem.cantidad++;
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Stock insuficiente',
+                text: 'No hay suficiente stock disponible para este producto.',
+                confirmButtonText: 'Aceptar'
+              });
+              return;
+            }
           } else {
-            orderItems.push({ id, nombre, precio, cantidad: 1 });
+            if (stock > 0) {
+              orderItems.push({ id, nombre, precio, cantidad: 1, stock });
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Stock agotado',
+                text: 'Este producto no tiene stock disponible.',
+                confirmButtonText: 'Aceptar'
+              });
+              return;
+            }
           }
           renderOrderTable();
           calculateTotals();
+          updateStockDisplay(id, stock - (existingItem ? existingItem.cantidad : 1));
         }
-        function removeFromOrder(id) {
-            const itemIndex = orderItems.findIndex(item => item.id === id);
-            if (itemIndex !== -1) {
-                orderItems.splice(itemIndex, 1); // Eliminar el producto del array
-                renderOrderTable();             // Renderizar la tabla actualizada
-                calculateTotals();              // Recalcular los totales
+
+        function updateStockDisplay(productId, newStock) {
+          const rows = document.querySelectorAll('#product-table-body tr');
+          rows.forEach(row => {
+            if (row.cells[0].textContent === productId.toString()) {
+              row.cells[2].textContent = newStock;
+              // Deshabilitar el botón si no hay stock
+              const addButton = row.querySelector('button');
+              if (newStock <= 0) {
+                addButton.disabled = true;
+                addButton.classList.add('btn-secondary');
+                addButton.classList.remove('btn-primary');
+              }
             }
+          });
+        }
+
+        function updateQuantity(id, cantidad) {
+          const item = orderItems.find(item => item.id === id);
+          if (item) {
+            const newCantidad = parseInt(cantidad);
+            if (newCantidad <= item.stock) {
+              item.cantidad = newCantidad;
+              renderOrderTable();
+              calculateTotals();
+              updateStockDisplay(id, item.stock - newCantidad);
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Stock insuficiente',
+                text: 'No hay suficiente stock disponible para esta cantidad.',
+                confirmButtonText: 'Aceptar'
+              });
+              // Restaurar la cantidad anterior
+              const input = document.querySelector(`input[onchange="updateQuantity(${id}, this.value)"]`);
+              if (input) {
+                input.value = item.cantidad;
+              }
+            }
+          }
         }
     
         function renderOrderTable() {
@@ -294,15 +350,6 @@
           });
         }
     
-        function updateQuantity(id, cantidad) {
-          const item = orderItems.find(item => item.id === id);
-          if (item) {
-            item.cantidad = parseInt(cantidad);
-            renderOrderTable();
-            calculateTotals();
-          }
-        }
-    
         function calculateTotals() {
           let subtotal = 0;
           orderItems.forEach(item => {
@@ -324,7 +371,7 @@
   document.getElementById('search-product').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
     
-    fetch(`/all_products`)  // Nueva API para obtener todos los productos
+    fetch(`/all_products`)
       .then(response => response.json())
       .then(products => {
         const productTableBody = document.getElementById('product-table-body');
@@ -336,8 +383,9 @@
             row.innerHTML = `
               <td>${product.id}</td>
               <td>${product.nombre}</td>
+              <td>${product.stock}</td>
               <td>C$${Number(product.precio).toFixed(2)}</td>
-              <td><button onclick="addToOrder(${product.id}, '${product.nombre}', ${product.precio})" class="btn btn-primary btn-sm">Añadir</button></td>
+              <td><button onclick="addToOrder(${product.id}, '${product.nombre}', ${product.precio}, ${product.stock})" class="btn btn-primary btn-sm" ${product.stock <= 0 ? 'disabled' : ''}>Añadir</button></td>
             `;
             productTableBody.appendChild(row);
           }
@@ -345,17 +393,14 @@
       });
   });
 
-  function addToOrder(id, nombre, precio) {
-    const existingItem = orderItems.find(item => item.id === id);
-    if (existingItem) {
-      existingItem.cantidad++;
-    } else {
-      orderItems.push({ id, nombre, precio, cantidad: 1 });
+  function removeFromOrder(id) {
+    const itemIndex = orderItems.findIndex(item => item.id === id);
+    if (itemIndex !== -1) {
+      orderItems.splice(itemIndex, 1);
+      renderOrderTable();
+      calculateTotals();
     }
-    renderOrderTable();
-    calculateTotals();
   }
-
 </script>
 
 

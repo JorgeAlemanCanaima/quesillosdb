@@ -5,131 +5,123 @@
 {% endblock %}
 
 {% block main %}
+<div class="container">
+  <div class="mb-3 d-flex">
+    <input type="text" id="filterInput2" class="form-control" placeholder="Buscar producto (escribe para filtrar)">
+    <button onclick="filterTable2()" class="btn btn-primary ms-2" style="display: none;">Filtrar</button>
+  </div>
 
-<div class="mb-3 d-flex">
-  <input type="text" id="filterInput2" class="form-control" placeholder="Buscar producto (escribe para filtrar)">
-  <button onclick="filterTable2()" class="btn btn-primary ms-2" style="display: none;">Filtrar</button>
-</div>
-
-<div class="col-lg-12">
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Listado de productos totales</h5>
-      <div class="table-responsive">
-        <table class="table text-nowrap align-middle mb-0" id="productable">
-          <thead>
-            <tr class="border-2 border-bottom border-primary border-0"> 
-              <th scope="col" class="ps-0">Codigo del producto</th>
-              <th scope="col">Nombre</th>
-              <th scope="col">Opciones</th>
-            </tr>
-          </thead>
-          <tbody class="table-group-divider">
-            {% for i in info %}
-              <tr>
-                <td>{{ i['id'] }}</td>
-                <td>{{ i['nombre'] }}</td>
-                <td>
-                  <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal" onclick="setEditData({{ i['id'] }}, '{{ i['nombre'] }}', '{{ i['precio'] }}')">
-                    <img src="../static/images/logos/search.png" alt="Editar" width="16" height="16">
-                  </button>
-                </td>
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Listado de productos totales</h5>
+        <div class="table-responsive">
+          <table class="table text-nowrap align-middle mb-0" id="productable">
+            <thead>
+              <tr class="border-2 border-bottom border-primary border-0"> 
+                <th scope="col" class="ps-0">Codigo del producto</th>
+                <th scope="col">Nombre</th>
+                <th scope="col">Opciones</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody class="table-group-divider">
+              {% for i in info %}
+                <tr>
+                  <td>{{ i['id'] }}</td>
+                  <td>{{ i['nombre'] }}</td>
+                  <td>
+                    <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal" onclick="setEditData({{ i['id'] }}, '{{ i['nombre'] }}', '{{ i['precio'] }}')">
+                      <img src="../static/images/logos/search.png" alt="Editar" width="16" height="16">
+                    </button>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Edición (Registrar Producto) -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalLabel">Registrar Producto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="registroProductoForm" class="needs-validation" novalidate>
+            <input type="hidden" id="editId" name="producto_id">
+            
+            <div class="mb-3">
+              <label for="editpro" class="form-label">Proveedor</label>
+              <select class="form-control" id="editpro" name="proveedor" required>
+                <option value="" disabled selected>Selecciona un proveedor</option>
+                <option value="MERCADO ORIENTAL">MERCADO ORIENTAL</option>
+                <option value="Alimentos Frescos del Caribe">Alimentos Frescos del Caribe</option>
+                <option value="Bebidas Nicas">Bebidas Nicas</option>
+                <option value="Carnes La Chanchera">Carnes La Chanchera</option>
+                <option value="Lácteos del Valle">Lácteos del Valle</option>
+                <option value="Panadería El Buen Pan">Panadería El Buen Pan</option>
+                <option value="Limpieza Total">Limpieza Total</option>
+                <option value="Utensilios Nica">Utensilios Nica</option>
+                <option value="Especias Nicaragüenses">Especias Nicaragüenses</option>
+              </select>
+              <div class="invalid-feedback">
+                Por favor selecciona un proveedor
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="editcantidad" class="form-label">Cantidad</label>
+              <input type="number" class="form-control" id="editcantidad" name="cantidad" required min="1">
+              <div class="invalid-feedback">
+                Por favor ingresa una cantidad válida
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="editcosto" class="form-label">Costo por unidad</label>
+              <input type="number" class="form-control" id="editcosto" name="costo" step="0.01" required min="0.01">
+              <div class="invalid-feedback">
+                Por favor ingresa un costo válido
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="editfecha" class="form-label">Fecha y Hora</label>
+              <input type="datetime-local" class="form-control" id="editfecha" name="fecha" required>
+              <div class="invalid-feedback">
+                Por favor selecciona una fecha y hora
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btnGuardarProducto">Registrar Producto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación -->
+  <div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-body text-center">
+          <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+          <h5 class="mt-3">¡Pedido ingresado correctamente!</h5>
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
-
-<!-- Modal de Edición (Registrar Producto) -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="editModalLabel">Registrar Producto</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="registroProductoForm">
-          <input type="hidden" id="editId" name="producto_id"> <!-- Corregido el name -->
-          
-          <div class="mb-3">
-            <label for="editpro" class="form-label">Proveedor</label>
-            <select class="form-control" id="editpro" name="proveedor" required>
-              <option value="" disabled selected>Selecciona un proveedor</option>
-              <option value="MERCADO ORIENTAL">MERCADO ORIENTAL</option>
-              <option value="Alimentos Frescos del Caribe">Alimentos Frescos del Caribe</option>
-              <option value="Bebidas Nicas">Bebidas Nicas</option>
-              <option value="Carnes La Chanchera">Carnes La Chanchera</option>
-              <option value="Lácteos del Valle">Lácteos del Valle</option>
-              <option value="Panadería El Buen Pan">Panadería El Buen Pan</option>
-              <option value="Limpieza Total">Limpieza Total</option>
-              <option value="Utensilios Nica">Utensilios Nica</option>
-              <option value="Especias Nicaragüenses">Especias Nicaragüenses</option>
-            </select>
-          </div>
-          
-          <div class="mb-3">
-            <label for="editcantidad" class="form-label">Cantidad</label>
-            <input type="number" class="form-control" id="editcantidad" name="cantidad" required>
-          </div>
-
-          <div class="mb-3">
-            <label for="editcosto" class="form-label">Costo por unidad</label>
-            <input type="number" class="form-control" id="editcosto" name="costo" step="0.01" required>
-          </div>
-
-          <!-- Campo de fecha actualizado con formato datetime-local -->
-          <div class="mb-3">
-            <label for="editfecha" class="form-label">Fecha y Hora</label>
-            <input type="datetime-local" class="form-control" id="editfecha" name="fecha" required>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnGuardarProducto">Registrar Producto</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de confirmación -->
-<div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-body text-center">
-        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
-        <h5 class="mt-3">¡Pedido ingresado correctamente!</h5>
-      </div>
-      <div class="modal-footer justify-content-center">
-        <button type="button" class="btn btn-success" data-bs-dismiss="modal">Aceptar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- JavaScript para manejar el modal -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Configurar fecha y hora actual por defecto
-  const now = new Date();
-  const timezoneOffset = now.getTimezoneOffset() * 60000; // offset en milisegundos
-  const localISOTime = (new Date(now - timezoneOffset)).toISOString().slice(0, 16);
-  document.getElementById('editfecha').value = localISOTime;
-  
-  // Función para setear datos de edición
-  function setEditData(productId, productName, productPrice) {
-    document.getElementById('editId').value = productId;
-    // Puedes agregar más lógica aquí si necesitas
-  }
-  
-  // Asignar la función al ámbito global
-  window.setEditData = setEditData;
-});
-</script>
 
 <script src="{{ url_for('static', filename='js/filter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/modals2.js') }}"></script>

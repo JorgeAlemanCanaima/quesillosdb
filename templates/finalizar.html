@@ -372,6 +372,44 @@
                         <label class="form-check-label" for="propinaSwitch">¿Incluir propina (10%)?</label>
                         <input type="hidden" id="propinaValue" name="propina_value" value="{{ "%.2f"|format(info[0]['total_monto'] * 0.10) }}">
                     </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label">Tipo de Pago:</label>
+                        <div class="d-flex gap-2">
+                            <div class="form-check flex-grow-1">
+                                <input class="form-check-input" type="radio" name="tipo_pago" id="efectivo" value="efectivo" required>
+                                <label class="form-check-label d-flex align-items-center justify-content-center gap-2" for="efectivo">
+                                    <i class="bi bi-cash-coin"></i>
+                                    Efectivo
+                                </label>
+                            </div>
+                            <div class="form-check flex-grow-1">
+                                <input class="form-check-input" type="radio" name="tipo_pago" id="tarjeta" value="tarjeta" required>
+                                <label class="form-check-label d-flex align-items-center justify-content-center gap-2" for="tarjeta">
+                                    <i class="bi bi-credit-card"></i>
+                                    Tarjeta
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mb-3" id="tipoTarjetaGroup" style="display: none;">
+                        <label class="form-label">Tipo de Tarjeta:</label>
+                        <div class="d-flex gap-2">
+                            <div class="form-check flex-grow-1">
+                                <input class="form-check-input" type="radio" name="tipo_tarjeta" id="bac" value="bac">
+                                <label class="form-check-label d-flex align-items-center justify-content-center gap-2" for="bac">
+                                    <i class="bi bi-bank"></i>
+                                    BAC
+                                </label>
+                            </div>
+                            <div class="form-check flex-grow-1">
+                                <input class="form-check-input" type="radio" name="tipo_tarjeta" id="banpro" value="banpro">
+                                <label class="form-check-label d-flex align-items-center justify-content-center gap-2" for="banpro">
+                                    <i class="bi bi-bank"></i>
+                                    Banpro
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-finalizar w-100">
                         Finalizar Pedido
                     </button>
@@ -381,7 +419,7 @@
     </div>
   </div>
 
-  <!-- JavaScript exclusivo para manejo de propina -->
+  <!-- JavaScript exclusivo para manejo de propina y tipo de tarjeta -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
         const propinaSwitch = document.getElementById("propinaSwitch");
@@ -390,7 +428,10 @@
         const propinaElement = document.getElementById("propina");
         const totalElement = document.getElementById("total");
         const propinaBase = parseFloat(propinaElement.innerText);
+        const tipoTarjetaGroup = document.getElementById("tipoTarjetaGroup");
+        const tarjetaInputs = document.querySelectorAll('input[name="tipo_tarjeta"]');
 
+        // Manejo de propina
         propinaSwitch.addEventListener("change", function() {
             if (this.checked) {
                 totalElement.innerText = (subtotal + propinaBase).toFixed(2);
@@ -399,6 +440,22 @@
                 totalElement.innerText = subtotal.toFixed(2);
                 propinaValue.value = "0.00";
             }
+        });
+
+        // Manejo de tipo de tarjeta
+        document.querySelectorAll('input[name="tipo_pago"]').forEach(input => {
+            input.addEventListener('change', function() {
+                if (this.value === 'tarjeta') {
+                    tipoTarjetaGroup.style.display = 'block';
+                    tarjetaInputs.forEach(input => input.required = true);
+                } else {
+                    tipoTarjetaGroup.style.display = 'none';
+                    tarjetaInputs.forEach(input => {
+                        input.required = false;
+                        input.checked = false;
+                    });
+                }
+            });
         });
 
         // Inicializar con propina activada por defecto

@@ -14,14 +14,16 @@
     }
     .filter-container {
         background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 5px;
+        padding: 20px;
+        border-radius: 10px;
         margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .status-badge {
         font-size: 0.85em;
-        padding: 5px 10px;
-        border-radius: 10px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 500;
     }
     .badge-pendiente {
         background-color: #ffc107;
@@ -31,8 +33,30 @@
         background-color: #28a745;
         color: white;
     }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
     .action-buttons .btn {
-        margin-right: 5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    .action-buttons .btn:hover {
+        transform: translateY(-1px);
+    }
+    .action-buttons .btn-primary {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .action-buttons .btn-success {
+        background-color: #198754;
+        border-color: #198754;
     }
     .modal-print {
         max-width: 80%;
@@ -40,22 +64,66 @@
     .factura-header {
         text-align: center;
         margin-bottom: 20px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 10px;
     }
     .factura-info {
         margin-bottom: 30px;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .factura-table {
         width: 100%;
         margin-bottom: 20px;
+        border-radius: 10px;
+        overflow: hidden;
     }
     .factura-table th {
         background-color: #f8f9fa;
         text-align: center;
+        padding: 12px;
+        font-weight: 600;
+    }
+    .factura-table td {
+        padding: 12px;
+        vertical-align: middle;
     }
     .factura-totales {
         margin-top: 20px;
         float: right;
         width: 300px;
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+    }
+    .badge {
+        padding: 6px 12px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .badge i {
+        font-size: 1.1em;
+    }
+    .table > :not(caption) > * > * {
+        padding: 1rem;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    .btn-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        font-weight: 500;
+    }
+    .btn-filter i {
+        font-size: 1.1em;
     }
     @media print {
         .no-print {
@@ -101,10 +169,10 @@
             </div>
             
             <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">
+                <button type="submit" class="btn btn-primary btn-filter me-2">
                     <i class="bi bi-funnel"></i> Filtrar
                 </button>
-                <a href="{{ url_for('facturacion') }}" class="btn btn-outline-secondary">
+                <a href="{{ url_for('facturacion') }}" class="btn btn-outline-secondary btn-filter">
                     <i class="bi bi-arrow-counterclockwise"></i> Limpiar
                 </a>
             </div>
@@ -123,6 +191,7 @@
                     <th>Propina</th>
                     <th>Fecha</th>
                     <th>Estado</th>
+                    <th>Tipo de Pago</th>
                     <th class="no-print">Acciones</th>
                 </tr>
             </thead>
@@ -146,9 +215,22 @@
                             {{ factura['estado'].capitalize() }}
                         </span>
                     </td>
+                    <td>
+                        {% if factura['tipo_pago'] %}
+                            <span class="badge bg-info">
+                                <i class="bi {% if factura['tipo_pago'] == 'efectivo' %}bi-cash-coin{% else %}bi-credit-card{% endif %}"></i>
+                                {{ factura['tipo_pago'].capitalize() }}
+                                {% if factura['tipo_pago'] == 'tarjeta' and factura['tipo_tarjeta'] %}
+                                    ({{ factura['tipo_tarjeta'].upper() }})
+                                {% endif %}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary">No especificado</span>
+                        {% endif %}
+                    </td>
                     <td class="action-buttons no-print">
                         <button type="button" 
-                                class="btn btn-sm btn-primary" 
+                                class="btn btn-primary" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#facturaModal"
                                 onclick="cargarDetalleFactura(
@@ -160,7 +242,9 @@
                                     '{{ factura['estado'] }}',
                                     '{{ factura['num_mesa'] }}',
                                     '{{ factura['mesero'] }}',
-                                    '{{ "%.2f"|format(factura['propina']) }}'
+                                    '{{ "%.2f"|format(factura['propina']) }}',
+                                    '{{ factura['tipo_pago'] }}',
+                                    '{{ factura['tipo_tarjeta'] }}'
                                 )">
                             <i class="bi bi-eye"></i> Ver Factura
                         </button>
@@ -168,7 +252,7 @@
                             <form action="{{ url_for('finalizar', mesa_id=factura['num_mesa'], pedido_id=factura['pedido_id']) }}" 
                                   method="post" 
                                   style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-success">
+                                <button type="submit" class="btn btn-success">
                                     <i class="bi bi-check-circle"></i> Marcar como Pagada
                                 </button>
                             </form>
@@ -219,7 +303,7 @@
     // Declarar variable global para almacenar los datos de la factura
     let currentFactura = {};
 
-    function cargarDetalleFactura(codigo, cliente, pedidoId, monto, fecha, estado, mesa, mesero, propina) {
+    function cargarDetalleFactura(codigo, cliente, pedidoId, monto, fecha, estado, mesa, mesero, propina, tipo_pago, tipo_tarjeta) {
         currentFactura = {
             codigo: codigo,
             cliente: cliente,
@@ -229,7 +313,9 @@
             fecha: fecha,
             estado: estado,
             mesa: mesa,
-            mesero: mesero
+            mesero: mesero,
+            tipo_pago: tipo_pago,
+            tipo_tarjeta: tipo_tarjeta
         };
         
         // Hacer una petición AJAX para obtener los productos
@@ -291,6 +377,13 @@
                     </div>
                     <p><strong>CLIENTE:</strong> ${currentFactura.cliente}</p>
                     <p><strong>Atendido por:</strong> ${currentFactura.mesero}</p>
+                    <p><strong>Tipo de Pago:</strong> 
+                        <span class="badge bg-info">
+                            <i class="bi ${currentFactura.tipo_pago === 'efectivo' ? 'bi-cash-coin' : 'bi-credit-card'}"></i>
+                            ${currentFactura.tipo_pago ? currentFactura.tipo_pago.charAt(0).toUpperCase() + currentFactura.tipo_pago.slice(1) : 'No especificado'}
+                            ${currentFactura.tipo_pago === 'tarjeta' && currentFactura.tipo_tarjeta ? ` (${currentFactura.tipo_tarjeta.toUpperCase()})` : ''}
+                        </span>
+                    </p>
                 </div>
                 
                 <table class="table table-bordered factura-table">
@@ -343,26 +436,35 @@
         doc.setTextColor(0, 0, 0);
         
         // Encabezado de la factura
-        doc.setFontSize(16);
+        doc.setFontSize(20);
         doc.setFont('helvetica', 'bold');
-        doc.text('QUESILLOS LO NUESTRO', 105, 15, { align: 'center' });
-        doc.setFontSize(10);
+        doc.text('QUESILLOS LO NUESTRO', 105, 20, { align: 'center' });
+        
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
-        doc.text('DIR. CONTIGUO A CLARO ALTAMIRA', 105, 22, { align: 'center' });
-        doc.text('MANAGUA, NICARAGUA', 105, 27, { align: 'center' });
-        doc.text('TELÉFONO: 2277-4001', 105, 32, { align: 'center' });
+        doc.text('DIR. CONTIGUO A CLARO ALTAMIRA', 105, 28, { align: 'center' });
+        doc.text('MANAGUA, NICARAGUA', 105, 35, { align: 'center' });
+        doc.text('TELÉFONO: 2277-4001', 105, 42, { align: 'center' });
         
         // Línea separadora
-        doc.line(15, 37, 195, 37);
+        doc.setLineWidth(0.5);
+        doc.line(15, 48, 195, 48);
         
         // Información de la factura
-        doc.setFontSize(12);
-        doc.text(`ID_FACTURA: ${currentFactura.codigo}`, 20, 45);
-        doc.text(`FECHA: ${currentFactura.fecha}`, 105, 45);
-        doc.text(`MESA: ${currentFactura.mesa}`, 180, 45, { align: 'right' });
-        doc.text(`CLIENTE: ${currentFactura.cliente}`, 20, 52);
-        doc.text(`MESERO: ${currentFactura.mesero}`, 20, 59);
-
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('INFORMACIÓN DE LA FACTURA', 20, 58);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(`ID Factura: ${currentFactura.codigo}`, 20, 65);
+        doc.text(`Fecha: ${currentFactura.fecha}`, 20, 72);
+        doc.text(`Mesa: ${currentFactura.mesa}`, 20, 79);
+        doc.text(`Cliente: ${currentFactura.cliente}`, 20, 86);
+        doc.text(`Mesero: ${currentFactura.mesero}`, 20, 93);
+        doc.text(`Tipo de Pago: ${currentFactura.tipo_pago ? currentFactura.tipo_pago.toUpperCase() : 'NO ESPECIFICADO'}`, 20, 100);
+        if (currentFactura.tipo_pago === 'tarjeta' && currentFactura.tipo_tarjeta) {
+            doc.text(`Tipo de Tarjeta: ${currentFactura.tipo_tarjeta.toUpperCase()}`, 20, 107);
+        }
         
         // Tabla de productos
         const productosData = currentFactura.productos.map(p => [
@@ -373,25 +475,39 @@
         ]);
         
         doc.autoTable({
-            startY: 65,
+            startY: 110,
             head: [['PRODUCTOS', 'PRECIO UNITARIO', 'CANTIDAD', 'TOTAL']],
             body: productosData,
             margin: { left: 15, right: 15 },
-            styles: { fontSize: 10 },
-            headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0] }
+            styles: { 
+                fontSize: 10,
+                cellPadding: 5
+            },
+            headStyles: { 
+                fillColor: [41, 128, 185],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold'
+            },
+            alternateRowStyles: {
+                fillColor: [245, 245, 245]
+            }
         });
         
         // Totales
         const finalY = doc.lastAutoTable.finalY + 10;
-        doc.text(`SUBTOTAL: C$${currentFactura.subtotal.toFixed(2)}`, 160, finalY, { align: 'right' });
-        doc.text(`PROPINA: C$${currentFactura.propina.toFixed(2)}`, 160, finalY + 8, { align: 'right' });
         doc.setFont('helvetica', 'bold');
-        doc.text(`TOTAL: C$${currentFactura.monto.toFixed(2)}`, 160, finalY + 16, { align: 'right' });
+        doc.text('RESUMEN DE PAGO', 20, finalY);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Subtotal: C$${currentFactura.subtotal.toFixed(2)}`, 160, finalY + 8, { align: 'right' });
+        doc.text(`Propina: C$${currentFactura.propina.toFixed(2)}`, 160, finalY + 16, { align: 'right' });
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total: C$${currentFactura.monto.toFixed(2)}`, 160, finalY + 24, { align: 'right' });
         
         // Pie de página
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        doc.text('¡Gracias por su preferencia!', 105, finalY + 30, { align: 'center' });
+        doc.text('¡Gracias por su preferencia!', 105, finalY + 40, { align: 'center' });
         
         // Guardar el PDF
         doc.save(`Factura_${currentFactura.codigo}.pdf`);
