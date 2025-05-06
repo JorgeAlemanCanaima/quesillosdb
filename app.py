@@ -459,6 +459,9 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
+        if not username or not password:
+            return redirect(url_for('login', error='empty'))
+
         try:
             cursor = connection.cursor()
             cursor.execute("""
@@ -467,22 +470,19 @@ def login():
             user = cursor.fetchone()
             
             if not user:
-                flash("Usuario o contraseña incorrectos.", "error")
-                return redirect(url_for('login'))
+                return redirect(url_for('login', error='invalid'))
 
-            else:
-                session['user_id'] = user[0]
-                session['username'] = username
-                session['rol'] = user['rol']
-                print("Sesión iniciada correctamente")
-                print("User ID guardado en la sesión:", session.get('user_id'))
-                print("Rol guardado en la sesión:", session.get('rol'))
+            session['user_id'] = user[0]
+            session['username'] = username
+            session['rol'] = user['rol']
+            print("Sesión iniciada correctamente")
+            print("User ID guardado en la sesión:", session.get('user_id'))
+            print("Rol guardado en la sesión:", session.get('rol'))
 
-                return redirect(url_for('mesas1'))
-        except:
-            print("Error en la consulta:")
-            flash("Error al procesar la solicitud. Intenta nuevamente.")
-            return redirect(url_for('login'))
+            return redirect(url_for('mesas1'))
+        except Exception as e:
+            print(f"Error en la consulta: {e}")
+            return redirect(url_for('login', error='server'))
     
     return render_template('login.html')
 
