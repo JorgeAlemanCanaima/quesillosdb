@@ -49,7 +49,11 @@
                   <td>{{ i['categoria'] }} </td>
                   <td>
                     
-                  <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal" onclick="setEditData({{ i['id'] }}, '{{ i['nombre'] }}', '{{ i['precio'] }}')">
+                  <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal" 
+                          data-id="{{ i['id'] }}"
+                          data-nombre="{{ i['nombre'] }}"
+                          data-precio="{{ i['precio'] }}"
+                          onclick="setEditDataFromButton(this)">
                     <img src="../static/images/logos/editar.png" alt="Editar" width="16" height="16">
                   </button>
 

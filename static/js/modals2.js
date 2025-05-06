@@ -3,13 +3,19 @@
 // Función para abrir el modal de edición y establecer los datos del producto en el formulario
 function setEditData(productId, productName, productPrice) {
   document.getElementById('editId').value = productId;
-  // Resetear el formulario
-  document.getElementById('registroProductoForm').reset();
-  // Restablecer la fecha actual
-  const now = new Date();
-  const timezoneOffset = now.getTimezoneOffset() * 60000;
-  const localISOTime = (new Date(now - timezoneOffset)).toISOString().slice(0, 16);
-  document.getElementById('editfecha').value = localISOTime;
+  document.getElementById('editNombre').value = productName;
+  document.getElementById('editPrecio').value = productPrice;
+}
+
+// Función para obtener los datos del botón y establecerlos en el formulario
+function setEditDataFromButton(button) {
+  const id = button.getAttribute('data-id');
+  const nombre = button.getAttribute('data-nombre');
+  const precio = button.getAttribute('data-precio');
+  
+  document.getElementById('editId').value = id;
+  document.getElementById('editNombre').value = nombre;
+  document.getElementById('editPrecio').value = precio;
 }
 
 // Función para guardar los cambios de edición
