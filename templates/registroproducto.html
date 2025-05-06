@@ -5,62 +5,133 @@
 {% endblock %}
 
 {% block main %}
-<form action="/ingresoproducto" method="post">
-  <div class="row">
-      <!-- Product Information Section -->
-      <div class="col-md-6 mb-3">
-        <div class="card bg-light text-dark p-3">
-          <h5>Información del Producto</h5>
-          <div class="mb-3">
-            <label class="form-label">Nombre del producto</label>
-            <input name="nombre" type="text" class="form-control" placeholder="Ingrese el nombre del producto">
-          </div>
-          <div class="row">
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <form action="/ingresoproducto" method="post">
+                <div class="row g-4">
+                    <!-- Product Information Section -->
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Información del Producto</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="bi bi-tag me-2"></i>Nombre del producto
+                                    </label>
+                                    <input name="nombre" type="text" class="form-control form-control-lg" 
+                                           placeholder="Ingrese el nombre del producto" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">
+                                        <i class="bi bi-currency-dollar me-2"></i>Precio Venta
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light">C$</span>
+                                        <input name="precio" type="number" class="form-control form-control-lg" 
+                                               placeholder="0.00" step="0.01" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Product Classification Section -->
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0"><i class="bi bi-grid me-2"></i>Clasificación del Producto</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="bi bi-list-check me-2"></i>Categoría
+                                    </label>
+                                    <select name="categoria" id="categoria" class="form-select form-select-lg" required>
+                                        <option value="">Seleccione categoría</option>
+                                        <option value="desayuno">Desayuno</option>
+                                        <option value="bebidas">Bebidas</option>
+                                        <option value="antojos tipicos">Antojos Tipicos</option>
+                                        <option value="quesillos">Quesillos</option>
+                                        <option value="postres">Postres</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-           
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Precio Venta</label>
-              <input name="precio" type="text" class="form-control" placeholder="Ingrese el precio de venta">
-            </div>
-
-          </div>
+                    <!-- Action Buttons -->
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end gap-3 mt-4">
+                            <a href="{{ url_for('mesas1') }}" class="btn btn-lg btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Descartar
+                            </a>
+                            <button type="submit" class="btn btn-lg btn-danger">
+                                <i class="bi bi-check-circle me-2"></i>Guardar Producto
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
-      </div>
-      
-      <!-- Product Classification Section -->
-      <div class="col-md-6 mb-3">
-        <div class="card bg-light text-dark p-3">
-          <h5>Clasificación del Producto</h5>
-          <div class="mb-3">
-            <label class="form-label">Categoría</label>
-            <select name ="categoria"  id="categoria" class="form-select">
-              <option value="">Seleccione categoría</option>
-              <option value="desayuno">Desayuno</option>
-              <option value="bebidas">Bebidas</option>
-              <option value="antojos tipicos">Antojos Tipicos</option>
-              <option value="quesillos">Quesillos</option>
-              <option value="postres">Postres</option>
-            </select>
-          </div>
-       <!-- Sección Imagen del Producto -->
-      <div class="card bg-light text-dark p-3 mt-3">
-          <h5>Imagen del Producto</h5>
-          <p>Agrega una imagen del producto</p>
-          <div class="text-center mb-3">
-          <!-- Imagen actual del producto -->
-          <img id="product-image-preview" src="../static/images/products/mesa.jpg" alt="Producto" class="img-thumbnail" style="width: 100px;">
-          </div>
-          <!-- Campo de entrada para cargar nueva imagen -->
-          <input type="file" class="form-control" id="product-image-input" accept="image/*" onchange="previewImage(event)">
-      </div>
-      
-      <!-- Action Buttons -->
-      <div class="d-flex justify-content-end mt-3">
-          <a class="btn btn-secondary me-2" href="{{ url_for('ingresoproducto') }}" aria-expanded="false">Descartar</a>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-      </div>
+    </div>
+</div>
 
-      
-  </div>
-</form>
+<style>
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 0.8rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+    
+    .input-group-text {
+        border-radius: 10px 0 0 10px;
+        border: 2px solid #e9ecef;
+        background-color: #f8f9fa;
+    }
+    
+    .btn {
+        border-radius: 10px;
+        padding: 0.8rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-danger {
+        background: linear-gradient(45deg, #dc3545, #c82333);
+        border: none;
+    }
+    
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+    }
+    
+    .btn-outline-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+    }
+</style>
 {% endblock %}
