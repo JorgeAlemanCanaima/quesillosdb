@@ -396,6 +396,9 @@
   function removeFromOrder(id) {
     const itemIndex = orderItems.findIndex(item => item.id === id);
     if (itemIndex !== -1) {
+      const removedItem = orderItems[itemIndex];
+      // Restaurar el stock original
+      updateStockDisplay(id, removedItem.stock);
       orderItems.splice(itemIndex, 1);
       renderOrderTable();
       calculateTotals();
