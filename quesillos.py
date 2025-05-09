@@ -7,6 +7,20 @@ from datetime import datetime
 conn = sqlite3.connect('quesillos.db')
 cursor = conn.cursor()
 
+
+# Crear la tabla movimientos_caja
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS movimientos_caja (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    tipo TEXT NOT NULL CHECK (tipo IN ('entrada', 'salida')),
+    descripcion TEXT NOT NULL,
+    precio DECIMAL(10,2) NOT NULL,
+    caja_id INTEGER,
+    FOREIGN KEY (caja_id) REFERENCES caja(id)
+);
+''')
+
 # Crear las tablas en SQLite
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS clientes (
@@ -20,7 +34,19 @@ CREATE TABLE IF NOT EXISTS clientes (
 ''')
 
 
-
+# Crear la tabla movimientos_caja
+# Crear la tabla movimientos_caja
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS movimientos_caja (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    tipo TEXT NOT NULL CHECK (tipo IN ('entrada', 'salida')),
+    descripcion TEXT NOT NULL,
+    precio DECIMAL(10,2) NOT NULL,
+    caja_id INTEGER,
+    FOREIGN KEY (caja_id) REFERENCES caja(id)
+);
+''')
 
 
 
@@ -130,6 +156,7 @@ CREATE TABLE IF NOT EXISTS password_resets (
     FOREIGN KEY (user_id) REFERENCES usuario_empleado(id)
 )
 ''')
+
 
 
 # Inserciones iniciales
