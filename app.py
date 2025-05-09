@@ -574,7 +574,7 @@ def ingresoproducto():
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                INSERT INTO productos (nombre, precio, categoria) VALUES (?, ?, ?)
+                INSERT INTO productos (nombre, precio, categoria, stock) VALUES (?, ?, ?, 0)
             """, (nombre, precio, categoria))
             flash("Producto Ingresado Correctamente")
             connection.commit()
@@ -738,13 +738,21 @@ def editar_cliente(id):
 def editar_producto(id):
     nombre = request.form['nombre']
     precio = request.form['precio']
+    stock = request.form.get('stock')
     
     cursor = connection.cursor()
-    cursor.execute("""
-        UPDATE productos
-        SET nombre = ?, precio = ?
-        WHERE id = ?
-    """, (nombre, precio, id))
+    if stock is not None:
+        cursor.execute("""
+            UPDATE productos
+            SET nombre = ?, precio = ?, stock = ?
+            WHERE id = ?
+        """, (nombre, precio, stock, id))
+    else:
+        cursor.execute("""
+            UPDATE productos
+            SET nombre = ?, precio = ?
+            WHERE id = ?
+        """, (nombre, precio, id))
     connection.commit()
     cursor.close()
     
@@ -1241,12 +1249,19 @@ def editar_registro():
     # Obtener datos del formulario
     entrada_id = request.form['id']
     fecha_entrada = request.form['fecha_entrada'].replace('T', ' ')  # Convertir T en espacio
-    cantidad_ingresada = request.form['cantidad_ingresada']
+    cantidad_ingresada = int(request.form['cantidad_ingresada'])
     costo_unitario = request.form['costo_unitario']
     producto_id = request.form['producto_id']
     
     try:
         cursor = connection.cursor()
+        # 1. Obtener la cantidad anterior y el producto_id anterior
+        cursor.execute("SELECT cantidad_ingresada, producto_id FROM entradas_inventario WHERE id = ?", (entrada_id,))
+        row = cursor.fetchone()
+        cantidad_anterior = int(row['cantidad_ingresada'])
+        producto_id_anterior = row['producto_id']
+
+        # 2. Actualizar la entrada
         cursor.execute("""
             UPDATE entradas_inventario
             SET fecha_entrada = ?,
@@ -1256,6 +1271,15 @@ def editar_registro():
             WHERE id = ?
         """, (fecha_entrada, cantidad_ingresada, costo_unitario, producto_id, entrada_id))
         
+        # 3. Si el producto es el mismo, solo ajusta la diferencia
+        if producto_id == str(producto_id_anterior):
+            diferencia = cantidad_ingresada - cantidad_anterior
+            cursor.execute("UPDATE productos SET stock = stock + ? WHERE id = ?", (diferencia, producto_id))
+        else:
+            # Si cambió el producto, resta al anterior y suma al nuevo
+            cursor.execute("UPDATE productos SET stock = stock - ? WHERE id = ?", (cantidad_anterior, producto_id_anterior))
+            cursor.execute("UPDATE productos SET stock = stock + ? WHERE id = ?", (cantidad_ingresada, producto_id))
+
         connection.commit()
         flash("Entrada actualizada exitosamente", "success")
     except Exception as e:

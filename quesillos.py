@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS productos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     precio REAL NOT NULL,
-    categoria TEXT
+    categoria TEXT,
+    stock INTEGER DEFAULT 0
 );
 ''')
 
