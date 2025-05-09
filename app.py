@@ -212,6 +212,19 @@ def forgot_password():
 
 from flask import render_template
 import sqlite3
+# Crear la tabla si no existe
+with app.app_context():
+    db = get_db()
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS movimientos_caja (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+            tipo TEXT NOT NULL,
+            descripcion TEXT NOT NULL,
+            precio DECIMAL(10,2) NOT NULL
+        )
+    """)
+    db.commit()
 
 @app.route('/historial')
 @login_required
@@ -564,6 +577,8 @@ def ingresoproducto():
 
     else:
         return render_template("registroproducto.html")
+    
+
     
 #Ruta en la que podemos ver todo el listado de platillos y bebidas
 @app.route('/catalogoproductos', methods=['GET', 'POST'])
@@ -1341,11 +1356,6 @@ def editar_pedidos(pedido_id):
             "estado": factura[4]
         }
         return render_template("factura.html", factura=factura_dict)
-
-
-        
-
-
     except Exception as e:
         print(f"Error al procesar el pedido: {e}")
         connection.rollback()
@@ -1359,6 +1369,49 @@ def get_all_products():
     products = cursor.fetchall()
     product_list = [{"id": row[0], "nombre": row[1], "precio": row[2], "stock": row[3]} for row in products]
     return jsonify(product_list)
+# después de `connection.row_factory = sqlite3.Row`
+
+
+@app.route('/movimiento_caja', methods=['GET', 'POST'])
+@login_required
+@role_required('Admin')
+def movimiento_caja_page():
+    db = get_db()
+
+    if request.method == 'POST':
+        data = request.get_json()
+        monto       = data.get('monto')
+        tipo        = data.get('tipo')
+        descripcion = data.get('descripcion')
+
+        # validaciones básicas
+        if (monto is None or monto <= 0
+            or tipo not in ['entrada','salida']
+            or not descripcion
+        ):
+            return jsonify({'status':'error','message':'Datos inválidos'}), 400
+
+        cursor = db.cursor()
+        cursor.execute(
+            """
+            INSERT INTO movimientos_caja (tipo, descripcion, precio)
+            VALUES (?, ?, ?)
+            """,
+            (tipo, descripcion, monto)
+        )
+        db.commit()
+        return jsonify({'status':'success'}), 200
+
+    # GET: leer todos los movimientos
+    movimientos = db.execute(
+        """
+        SELECT id, fecha, tipo, descripcion, precio
+        FROM movimientos_caja
+        ORDER BY fecha DESC
+        """
+    ).fetchall()
+    return render_template('movimiento_caja.html', movimientos=movimientos)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
