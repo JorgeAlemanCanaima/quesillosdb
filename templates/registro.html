@@ -67,7 +67,9 @@
                             data-cantidad="{{ entrada['cantidad_ingresada'] }}"
                             data-costo="{{ entrada['costo_unitario'] }}"
                             data-producto-id="{{ entrada['producto_id'] }}"
-                            data-proveedor="{{ entrada['proveedor'] }}">
+                            data-proveedor="{{ entrada['proveedor'] }}"
+                            data-stock="{{ entrada['stock'] }}"
+                            onclick="setEditDataFromButton(this)">
                         Editar
                     </button>
                 </td>
@@ -169,6 +171,7 @@
             var cantidad = button.getAttribute('data-cantidad');
             var costo = button.getAttribute('data-costo');
             var productoId = button.getAttribute('data-producto-id');
+            var stock = button.getAttribute('data-stock');
             
             // Formatear fecha para el input (datetime-local necesita formato YYYY-MM-DDTHH:MM)
             var fechaParaInput = fechaHora.includes('T') ? fechaHora.substring(0, 16) : fechaHora.replace(' ', 'T').substring(0, 16);
@@ -180,6 +183,7 @@
             modal.querySelector('#cantidad_ingresada').value = cantidad;
             modal.querySelector('#costo_unitario').value = costo;
             modal.querySelector('#producto_id').value = productoId;
+            modal.querySelector('#editStock').value = stock;
             
             // Actualizar título
             modal.querySelector('.modal-title').textContent = 'Editar Entrada #' + entradaId;
@@ -187,4 +191,4 @@
     });
     </script>
 </div>
-{% endblock %}
+{% endblock %}
