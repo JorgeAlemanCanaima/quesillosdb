@@ -39,4 +39,6 @@ instance/
 
 # Archivos de sesión de Flask
 flask_session/
+
+quesillosdb/
     
