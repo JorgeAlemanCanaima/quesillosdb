@@ -59,6 +59,14 @@ def add_header(response):
     response.headers['Expires'] = '0'
     return response
 
+@app.template_filter()   # toma el nombre 'number_format'
+def number_format(value, decimals=0):
+    try:
+        val = float(value)
+    except (TypeError, ValueError):
+        return "0"
+    txt = f"{val:,.{decimals}f}"
+    return txt.replace(",", "X").replace(".", ",").replace("X", ".")
 
 @app.template_filter('datetimeformat')
 def datetimeformat(value, format='%Y-%m-%d %H:%M'):
@@ -1371,44 +1379,35 @@ def get_all_products():
     return jsonify(product_list)
 # después de `connection.row_factory = sqlite3.Row`
 
-
 @app.route('/movimiento_caja', methods=['GET', 'POST'])
 @login_required
-@role_required('Admin')
+@role_required('admin')
 def movimiento_caja_page():
     db = get_db()
 
     if request.method == 'POST':
-        data = request.get_json()
+        # Recibe JSON desde JS
+        data        = request.get_json()
         monto       = data.get('monto')
         tipo        = data.get('tipo')
         descripcion = data.get('descripcion')
 
-        # validaciones básicas
-        if (monto is None or monto <= 0
-            or tipo not in ['entrada','salida']
-            or not descripcion
-        ):
+        if monto is None or monto <= 0 \
+           or tipo not in ['entrada','salida'] \
+           or not descripcion:
             return jsonify({'status':'error','message':'Datos inválidos'}), 400
 
-        cursor = db.cursor()
-        cursor.execute(
-            """
-            INSERT INTO movimientos_caja (tipo, descripcion, precio)
-            VALUES (?, ?, ?)
-            """,
+        db.execute(
+            "INSERT INTO movimientos_caja (tipo, descripcion, precio) VALUES (?, ?, ?)",
             (tipo, descripcion, monto)
         )
         db.commit()
         return jsonify({'status':'success'}), 200
 
-    # GET: leer todos los movimientos
+    # GET: lee todos los movimientos
     movimientos = db.execute(
-        """
-        SELECT id, fecha, tipo, descripcion, precio
-        FROM movimientos_caja
-        ORDER BY fecha DESC
-        """
+        "SELECT fecha, tipo, descripcion, precio "
+        "FROM movimientos_caja ORDER BY fecha DESC"
     ).fetchall()
     return render_template('movimiento_caja.html', movimientos=movimientos)
 
