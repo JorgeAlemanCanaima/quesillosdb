@@ -100,6 +100,24 @@ database_path = "quesillos.db"
 connection = sqlite3.connect(database_path, check_same_thread=False)
 connection.row_factory = sqlite3.Row
 
+# Crear tabla de cierres de corte si no existe
+with app.app_context():
+    connection.execute('''
+    CREATE TABLE IF NOT EXISTS cierres_corte (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha DATETIME NOT NULL,
+        venta_total DECIMAL(10,2) NOT NULL,
+        venta_efectivo DECIMAL(10,2) NOT NULL,
+        venta_bac DECIMAL(10,2) NOT NULL,
+        venta_banpro DECIMAL(10,2) NOT NULL,
+        efectivo_real DECIMAL(10,2) NOT NULL,
+        diferencia_efectivo DECIMAL(10,2) NOT NULL,
+        gastos DECIMAL(10,2) NOT NULL,
+        entradas DECIMAL(10,2) NOT NULL
+    )
+    ''')
+    connection.commit()
+
 def get_db():
     """Retorna la conexión a la base de datos existente"""
     return connection
@@ -1521,6 +1539,92 @@ def eliminar_empleado(id):
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/cierre-corte', methods=['GET', 'POST'])
+@login_required
+def cierre_corte():
+    cursor = connection.cursor()
+    
+    if request.method == 'POST':
+        try:
+            # Obtener datos del formulario
+            efectivo = float(request.form.get('efectivo', 0))
+            gastos = float(request.form.get('gastos', 0))
+            entradas = float(request.form.get('entradas', 0))
+            
+            # Obtener ventas del sistema
+            cursor.execute('''
+                SELECT 
+                    SUM(CASE WHEN f.tipo_pago = 'efectivo' THEN f.monto ELSE 0 END) as venta_efectivo,
+                    SUM(CASE WHEN f.tipo_pago = 'tarjeta' AND f.tipo_tarjeta = 'bac' THEN f.monto ELSE 0 END) as venta_bac,
+                    SUM(CASE WHEN f.tipo_pago = 'tarjeta' AND f.tipo_tarjeta = 'banpro' THEN f.monto ELSE 0 END) as venta_banpro,
+                    SUM(f.monto) as venta_total
+                FROM facturas f
+                JOIN pedidos p ON f.codigo = p.codigo_factura
+                WHERE f.estado = 'pagada' 
+                AND date(p.fecha_hora) = date('now', 'localtime')
+            ''')
+            
+            ventas = cursor.fetchone()
+            
+            # Calcular diferencias
+            diferencia_efectivo = efectivo - ventas['venta_efectivo']
+            
+            # Insertar registro de cierre
+            cursor.execute('''
+                INSERT INTO cierres_corte (
+                    fecha,
+                    venta_total,
+                    venta_efectivo,
+                    venta_bac,
+                    venta_banpro,
+                    efectivo_real,
+                    diferencia_efectivo,
+                    gastos,
+                    entradas
+                ) VALUES (datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                ventas['venta_total'],
+                ventas['venta_efectivo'],
+                ventas['venta_bac'],
+                ventas['venta_banpro'],
+                efectivo,
+                diferencia_efectivo,
+                gastos,
+                entradas
+            ))
+            
+            connection.commit()
+            flash('Cierre de corte registrado exitosamente', 'success')
+            return redirect(url_for('cierre_corte'))
+            
+        except Exception as e:
+            print('Error en cierre de corte:', e)
+            flash('Error al registrar el cierre de corte', 'error')
+            connection.rollback()
+    
+    # Para GET request, mostrar el formulario con los totales del día
+    cursor.execute('''
+        SELECT 
+            SUM(CASE WHEN f.tipo_pago = 'efectivo' THEN f.monto ELSE 0 END) as venta_efectivo,
+            SUM(CASE WHEN f.tipo_pago = 'tarjeta' AND f.tipo_tarjeta = 'bac' THEN f.monto ELSE 0 END) as venta_bac,
+            SUM(CASE WHEN f.tipo_pago = 'tarjeta' AND f.tipo_tarjeta = 'banpro' THEN f.monto ELSE 0 END) as venta_banpro,
+            SUM(f.monto) as venta_total
+        FROM facturas f
+        JOIN pedidos p ON f.codigo = p.codigo_factura
+        WHERE f.estado = 'pagada' 
+        AND date(p.fecha_hora) = date('now', 'localtime')
+    ''')
+    
+    ventas = cursor.fetchone()
+
+    # Consultar historial de cierres
+    cursor.execute('''
+        SELECT * FROM cierres_corte ORDER BY fecha DESC
+    ''')
+    historial_cortes = cursor.fetchall()
+
+    return render_template('cierre_corte.html', ventas=ventas, historial_cortes=historial_cortes)
 
 if __name__ == '__main__':
     app.run(debug=True)
