@@ -20,23 +20,30 @@
       <table class="table table-striped table-hover table-bordered shadow">
         <thead class="table-primary">
           <tr>
-            <th>ID</th>
             <th>Nombre</th>
             <th>Cargo</th>
             <th>Salario</th>
             <th>Teléfono</th>
             <th>Dirección</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           {% for emp in empleados %}
           <tr>
-            <td>{{ emp[0] }}</td>
             <td>{{ emp[1] }}</td>
             <td>{{ emp[2] }}</td>
             <td>C${{ emp[3] }}</td>
             <td>{{ emp[4] }}</td>
             <td>{{ emp[5] }}</td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="editarEmpleado({{ emp[0] }})">
+                <i class="bi bi-pencil-square"></i> Editar
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarEmpleado({{ emp[0] }})">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -47,4 +54,79 @@
       <a href="{{ url_for('empleados') }}" class="btn btn-primary">Registrar Nuevo Empleado</a>
     </div>
   </div>
+
+  <!-- Modal de Edición -->
+  <div class="modal fade" id="editarModal" tabindex="-1" aria-labelledby="editarModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editarModalLabel">Editar Empleado</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditarEmpleado" method="POST" action="{{ url_for('editar_empleado') }}">
+            <input type="hidden" id="edit_id" name="id">
+            <div class="mb-3">
+              <label for="edit_nombre" class="form-label">Nombre</label>
+              <input type="text" class="form-control" id="edit_nombre" name="nombre" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_cargo" class="form-label">Cargo</label>
+              <input type="text" class="form-control" id="edit_cargo" name="cargo" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_salario" class="form-label">Salario</label>
+              <input type="number" class="form-control" id="edit_salario" name="salario" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_telefono" class="form-label">Teléfono</label>
+              <input type="tel" class="form-control" id="edit_telefono" name="telefono" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_direccion" class="form-label">Dirección</label>
+              <textarea class="form-control" id="edit_direccion" name="direccion" required></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="formEditarEmpleado" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function editarEmpleado(id) {
+      // Aquí se hará una petición AJAX para obtener los datos del empleado
+      fetch(`/obtener_empleado/${id}`)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('edit_id').value = data.id;
+          document.getElementById('edit_nombre').value = data.nombre;
+          document.getElementById('edit_cargo').value = data.cargo;
+          document.getElementById('edit_salario').value = data.salario;
+          document.getElementById('edit_telefono').value = data.telefono;
+          document.getElementById('edit_direccion').value = data.direccion;
+          
+          new bootstrap.Modal(document.getElementById('editarModal')).show();
+        });
+    }
+
+    function eliminarEmpleado(id) {
+      if (confirm('¿Está seguro de que desea eliminar este empleado?')) {
+        fetch(`/eliminar_empleado/${id}`, {
+          method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert('Error al eliminar el empleado');
+          }
+        });
+      }
+    }
+  </script>
 {% endblock %}

@@ -1,72 +1,146 @@
 {% extends "layout.html" %}
-
-{% block title %}
-  Usuarios
-{% endblock %}
+{% block title %}Usuarios{% endblock %}
 
 {% block main %}
-<div class="contenedor">
-  <div class="card">
-    <div class="card-body">
-        <h4 class="card-title">Registrar un nuevo usuario</h4>
-        <form action="/usuarios" method="post">
-            <div class="row">
-                <div class="col-lg-4 mb-3">
-                    <label for="input1" class="form-label">Usuario</label>
-                    <input name="usuario" type="text" class="form-control" id="input1" placeholder="Usuario">
-                </div>
-                <div class="col-lg-4 mb-3">
-                    <label for="input1" class="form-label">Roles</label>
-                    <input name="roles" type="text" class="form-control" id="input2" placeholder="Roles">
-                </div>
-                <div class="col-lg-4 mb-3">
-                    <label for="input1" class="form-label">Contraseña</label>
-                    <input name="password" type="password" class="form-control" id="input3" placeholder="Contraseña">
-                </div>
-                <div class="col-lg-3 mb-3">
-                    <button class="btn btn-primary w-100 py-8 fs-4 mb-4" type="submit">Registrar</button>
-                </div>
-            </div>
+<div class="container py-4">
+  <h2>Usuarios</h2>
 
-        </form>
+  <!-- ▽ FORMULARIO de registro ▽ -->
+  <form id="registerForm" class="row g-3 mb-4" method="post" action="{{ url_for('usuarios') }}">
+    <div class="col-md-4">
+      <label class="form-label">Usuario</label>
+      <input name="usuario" type="text" class="form-control" required>
     </div>
+    <div class="col-md-4">
+      <label class="form-label">Rol</label>
+      <select name="rol" class="form-select" required>
+        <option value="">—</option>
+        <option>Admin</option>
+        <option>Mesero</option>
+        <option>Cajero</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Contraseña</label>
+      <input name="password" type="password" class="form-control" required minlength="4">
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary">Registrar</button>
+    </div>
+  </form>
 
+  <!-- ▽ LISTADO ▽ -->
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Usuario</th><th>Rol</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr data-id="{{ u.id }}">
+        <td class="td-name">{{ u.nombre_user }}</td>
+        <td class="td-role">{{ u.rol }}</td>
+        <td>
+          <button class="btn btn-sm btn-warning btn-edit">✎</button>
+          <button class="btn btn-sm btn-danger btn-delete">✕</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
-
-  </div>
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Usuarios</h5>
-      <div class="table-responsive">
-        <table class="table text-nowrap align-middle mb-0">
-          <thead>
-            <tr class="border-2 border-bottom border-primary border-0"> 
-              <th scope="col" class="ps-0">User</th>
-              <th scope="col" >Rol</th>
-              <th scope="col" >password</th>
-              <th scope="col">Opciones</th>
-            </tr>
-          </thead>
-          <tbody class="table-group-divider">
-            {% for i in info %}
-              <tr>
-                <td>{{ i['nombre_user'] }} </td>
-                <td>{{ i['rol']  }} </td>
-                <td>{{ i['contra_user'] }} </td>
-                <td>
-                  <a href="borrar.html" class="btn btn-danger">
-                  <img src="../static/images/logos/delete.png" alt="Editar" width="16" height="16">
-                </a> 
-                <a href="borrar.html" class="btn btn-secondary">
-                  <img src="../static/images/logos/editar.png" alt="Editar" width="16" height="16">
-                </a> 
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+<!-- Modal EDITAR -->
+<div class="modal fade" id="editModal">
+  <div class="modal-dialog">
+    <form class="modal-content" id="editForm">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Usuario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-    </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        <div class="mb-3">
+          <label class="form-label">Usuario</label>
+          <input id="editName" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Rol</label>
+          <select id="editRole" class="form-select" required>
+            <option>Admin</option>
+            <option>Mesero</option>
+            <option>Cajero</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Nueva contraseña (opcional)</label>
+          <input id="editPwd" type="password" class="form-control" minlength="4">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", ()=> {
+  const editModal = new bootstrap.Modal(document.getElementById("editModal"));
+  const editForm  = document.getElementById("editForm");
+
+  // ELIMINAR
+  document.querySelectorAll(".btn-delete").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const tr = btn.closest("tr"), id = tr.dataset.id;
+      if (!confirm("¿Eliminar este usuario?")) return;
+      fetch(`/usuarios/eliminar/${id}`, { method: "DELETE" })
+        .then(r=>r.json())
+        .then(j=>{
+          if (j.status==="success") tr.remove();
+          else alert(j.message);
+        });
+    });
+  });
+
+  // EDITAR → abrir modal
+  document.querySelectorAll(".btn-edit").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const tr = btn.closest("tr"), id = tr.dataset.id;
+      document.getElementById("editId").value   = id;
+      document.getElementById("editName").value = tr.querySelector(".td-name").textContent;
+      document.getElementById("editRole").value = tr.querySelector(".td-role").textContent;
+      document.getElementById("editPwd").value  = "";
+      editModal.show();
+    });
+  });
+
+  // EDITAR → submit
+  editForm.addEventListener("submit", e=>{
+    e.preventDefault();
+    const id = +document.getElementById("editId").value;
+    const body = {
+      nombre_user: document.getElementById("editName").value.trim(),
+      rol:         document.getElementById("editRole").value,
+      contra_user: document.getElementById("editPwd").value
+    };
+    fetch(`/usuarios/editar/${id}`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    })
+    .then(r=>r.json())
+    .then(j=>{
+      if (j.status==="success") {
+        const tr = document.querySelector(`tr[data-id='${id}']`);
+        tr.querySelector(".td-name").textContent = j.nombre_user;
+        tr.querySelector(".td-role").textContent = j.rol;
+        editModal.hide();
+      } else alert(j.message);
+    });
+  });
+});
+</script>
 {% endblock %}

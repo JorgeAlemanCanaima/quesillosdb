@@ -540,40 +540,78 @@ def index():
     return redirect(url_for('mesas1'))
 
 
-
-
-    
-    
-#ruta para el renderizado del login
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
-@role_required(['admin'])  # Solo administradores pueden acceder
+@role_required('Admin')
 def usuarios():
+    db = get_db()
     if request.method == 'POST':
-        user = request.form['usuario']
-        contra = request.form['password']
-        rol = request.form.get('rol', 'mesero')  # Por defecto es mesero
-        try:
-            cursor = connection.cursor()
-            cursor.execute("""
-                INSERT INTO usuario_empleado (nombre_user, contra_user, rol) VALUES (?, ?, ?)
-            """, (user, contra, rol))
-            connection.commit()
-            flash("Usuario creado correctamente")
+        nombre = request.form['usuario'].strip()
+        rol    = request.form['rol']
+        pwd    = request.form['password']
+        # Validaciones
+        if len(nombre) < 3 or not nombre[0].isupper():
+            flash("El usuario debe comenzar con mayúscula y tener ≥3 caracteres", "error")
             return redirect(url_for('usuarios'))
-        except:
-            flash("No se pudo crear el usuario")
-    else:
-        try:
-            cursor = connection.cursor()
-            cursor.execute("""
-                SELECT * FROM usuario_empleado
-            """)
-            table = cursor.fetchall()
-        except:
-            print("Error no se pudieron extraer los datos de la base de datos")
-        return render_template("usuarios.html", info=table)
-    
+        if rol not in ('Admin','Mesero','Cajero'):
+            flash("Rol inválido", "error")
+            return redirect(url_for('usuarios'))
+        if len(pwd) < 4:
+            flash("La contraseña debe tener ≥4 caracteres", "error")
+            return redirect(url_for('usuarios'))
+        # Inserción
+        db.execute(
+            "INSERT INTO usuario_empleado (nombre_user, rol, contra_user) VALUES (?, ?, ?)",
+            (nombre, rol, pwd)
+        )
+        db.commit()
+        flash("Usuario registrado correctamente", "success")
+        return redirect(url_for('usuarios'))
+
+    # GET: listar todos
+    cur   = db.execute("SELECT id, nombre_user, rol FROM usuario_empleado ORDER BY id DESC")
+    users = cur.fetchall()
+    return render_template('usuarios.html', users=users)
+
+@app.route('/usuarios/editar/<int:id>', methods=['POST'])
+@login_required
+@role_required('Admin')
+def editar_usuario(id):
+    data   = request.get_json()
+    nombre = data.get('nombre_user','').strip()
+    rol    = data.get('rol','')
+    pwd    = data.get('contra_user','').strip()
+    # Validaciones
+    if len(nombre) < 3 or not nombre[0].isupper():
+        return jsonify(status="error", message="Nombre inválido"), 400
+    if rol not in ('Admin','Mesero','Cajero'):
+        return jsonify(status="error", message="Rol inválido"), 400
+
+    params = [nombre, rol]
+    sql = "UPDATE usuario_empleado SET nombre_user = ?, rol = ?"
+    if pwd:
+        if len(pwd) < 4:
+            return jsonify(status="error", message="Contraseña muy corta"), 400
+        sql += ", contra_user = ?"
+        params.append(pwd)
+    sql += " WHERE id = ?"
+    params.append(id)
+
+    db = get_db()
+    db.execute(sql, tuple(params))
+    db.commit()
+    return jsonify(status="success", nombre_user=nombre, rol=rol)
+
+@app.route('/usuarios/eliminar/<int:id>', methods=['DELETE'])
+@login_required
+@role_required('Admin')
+def eliminar_usuario(id):
+    db = get_db()
+    db.execute("DELETE FROM usuario_empleado WHERE id = ?", (id,))
+    db.commit()
+    return jsonify(status="success")
+
+
 #ruta para el ingreso de productos
 @app.route('/ingresoproducto', methods=['GET', 'POST'])
 @login_required
@@ -1392,39 +1430,6 @@ def get_all_products():
     return jsonify(product_list)
 # después de `connection.row_factory = sqlite3.Row`
 
-@app.route('/movimiento_caja', methods=['GET', 'POST'])
-@login_required
-@role_required('admin')
-def movimiento_caja_page():
-    db = get_db()
-
-    if request.method == 'POST':
-        # Recibe JSON desde JS
-        data        = request.get_json()
-        monto       = data.get('monto')
-        tipo        = data.get('tipo')
-        descripcion = data.get('descripcion')
-
-        if monto is None or monto <= 0 \
-           or tipo not in ['entrada','salida'] \
-           or not descripcion:
-            return jsonify({'status':'error','message':'Datos inválidos'}), 400
-
-        db.execute(
-            "INSERT INTO movimientos_caja (tipo, descripcion, precio) VALUES (?, ?, ?)",
-            (tipo, descripcion, monto)
-        )
-        db.commit()
-        return jsonify({'status':'success'}), 200
-
-    # GET: lee todos los movimientos
-    movimientos = db.execute(
-        "SELECT fecha, tipo, descripcion, precio "
-        "FROM movimientos_caja ORDER BY fecha DESC"
-    ).fetchall()
-    return render_template('movimiento_caja.html', movimientos=movimientos)
-
-
 
 @app.route('/movimiento_caja', methods=['GET', 'POST'])
 @login_required
@@ -1458,6 +1463,64 @@ def movimiento_caja_page():
     ).fetchall()
     return render_template('movimiento_caja.html', movimientos=movimientos)
 
+@app.route('/obtener_empleado/<int:id>')
+@login_required
+@role_required(['admin'])
+def obtener_empleado(id):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM empleados WHERE id = ?", (id,))
+        empleado = cursor.fetchone()
+        if empleado:
+            return jsonify({
+                'id': empleado[0],
+                'nombre': empleado[1],
+                'cargo': empleado[2],
+                'salario': empleado[3],
+                'telefono': empleado[4],
+                'direccion': empleado[5]
+            })
+        return jsonify({'error': 'Empleado no encontrado'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/editar_empleado', methods=['POST'])
+@login_required
+@role_required(['admin'])
+def editar_empleado():
+    try:
+        id = request.form['id']
+        nombre = request.form['nombre']
+        cargo = request.form['cargo']
+        salario = request.form['salario']
+        telefono = request.form['telefono']
+        direccion = request.form['direccion']
+
+        cursor = connection.cursor()
+        cursor.execute("""
+            UPDATE empleados 
+            SET nombre = ?, cargo = ?, salario = ?, telefono = ?, direccion = ?
+            WHERE id = ?
+        """, (nombre, cargo, salario, telefono, direccion, id))
+        connection.commit()
+        
+        flash('Empleado actualizado correctamente')
+        return redirect(url_for('mostrar_empleados'))
+    except Exception as e:
+        flash(f'Error al actualizar empleado: {str(e)}')
+        return redirect(url_for('mostrar_empleados'))
+
+@app.route('/eliminar_empleado/<int:id>', methods=['DELETE'])
+@login_required
+@role_required(['admin'])
+def eliminar_empleado(id):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM empleados WHERE id = ?", (id,))
+        connection.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
