@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block content %}
+{% block main %}
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -63,7 +63,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="gastos" class="form-label">Gastos:</label>
+                                <label for="gastos" class="form-label">Gastos (automático):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">C$</span>
                                     <input type="number" 
@@ -71,15 +71,15 @@
                                            id="gastos" 
                                            name="gastos" 
                                            step="0.01" 
-                                           value="0.00" 
-                                           required>
+                                           value="{{ '%.2f'|format(gastos) }}" 
+                                           readonly>
                                 </div>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="entradas" class="form-label">Entradas:</label>
+                                <label for="entradas" class="form-label">Entradas (automático):</label>
                                 <div class="input-group">
                                     <span class="input-group-text">C$</span>
                                     <input type="number" 
@@ -87,8 +87,8 @@
                                            id="entradas" 
                                            name="entradas" 
                                            step="0.01" 
-                                           value="0.00" 
-                                           required>
+                                           value="{{ '%.2f'|format(entradas) }}" 
+                                           readonly>
                                 </div>
                             </div>
                         </div>
@@ -121,7 +121,9 @@
                         <table class="table table-bordered table-hover table-sm align-middle">
                             <thead class="table-light">
                                 <tr>
+                                    <th># Cierre Día</th>
                                     <th>Fecha</th>
+                                    <th>Usuario</th>
                                     <th>Total Ventas</th>
                                     <th>Efectivo</th>
                                     <th>BAC</th>
@@ -130,12 +132,15 @@
                                     <th>Diferencia</th>
                                     <th>Gastos</th>
                                     <th>Entradas</th>
+                                    <th># Facturas Pagadas</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for corte in historial_cortes %}
                                 <tr>
+                                    <td>{{ corte['numero_cierre_dia'] }}</td>
                                     <td>{{ corte['fecha'] }}</td>
+                                    <td>{{ corte['usuario'] }}</td>
                                     <td>C${{ '%.2f'|format(corte['venta_total']) }}</td>
                                     <td>C${{ '%.2f'|format(corte['venta_efectivo']) }}</td>
                                     <td>C${{ '%.2f'|format(corte['venta_bac']) }}</td>
@@ -144,10 +149,11 @@
                                     <td>C${{ '%.2f'|format(corte['diferencia_efectivo']) }}</td>
                                     <td>C${{ '%.2f'|format(corte['gastos']) }}</td>
                                     <td>C${{ '%.2f'|format(corte['entradas']) }}</td>
+                                    <td>{{ corte['facturas_pagadas'] }}</td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="9" class="text-center">No hay cierres registrados.</td>
+                                    <td colspan="12" class="text-center">No hay cierres registrados.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -160,19 +166,16 @@
 </div>
 
 <script>
-// Validación del formulario
-(function () {
-    'use strict'
-    var forms = document.querySelectorAll('.needs-validation')
-    Array.prototype.slice.call(forms).forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            if (!form.checkValidity()) {
-                event.preventDefault()
-                event.stopPropagation()
-            }
-            form.classList.add('was-validated')
-        }, false)
-    })
-})()
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.querySelector('button[type="submit"]');
+    const gastos = parseFloat(document.getElementById('gastos').value);
+    const entradas = parseFloat(document.getElementById('entradas').value);
+    if (gastos === 0 && entradas === 0) {
+        btn.disabled = true;
+        btn.classList.add('btn-secondary');
+        btn.classList.remove('btn-primary');
+        btn.innerHTML = '<i class="bi bi-x-circle"></i> No hay movimientos para cerrar';
+    }
+});
 </script>
 {% endblock %} 
