@@ -85,10 +85,69 @@
     overflow-y: auto; /* Scroll vertical si hay demasiados productos */
   }
 
+  /* Estilos para el modal de meseros */
+  .mesero-card {
+    border: 2px solid #dee2e6;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+  }
+
+  .mesero-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-color: #0d6efd;
+  }
+
+  .mesero-card.selected {
+    border-color: #198754;
+    background-color: #f8f9fa;
+  }
+
+  .mesero-avatar {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e9ecef;
+    border-radius: 50%;
+  }
+
+  /* Estilos para botones táctiles */
+  .btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.25rem;
+    border-radius: 10px;
+  }
+
+  /* Ajustes para pantallas táctiles */
+  @media (max-width: 768px) {
+    .modal-dialog {
+      margin: 0.5rem;
+    }
+    
+    .mesero-card {
+      margin-bottom: 1rem;
+    }
+    
+    .btn-lg {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+  }
+
 </style>
 </head>
 <body style="background-color: #f2f2f2;">
   <div class="container-fluid">
+    <div class="row mt-3 mx-3">
+        <div class="col-12">
+            <a href="{{ url_for('mesas1') }}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Volver a Mesas
+            </a>
+        </div>
+    </div>
 
     <div class="row encabezado mx-3 mt-3">
       <div class="card shadow">
@@ -307,6 +366,15 @@
           const item = orderItems.find(item => item.id === id);
           if (item) {
             const newCantidad = parseInt(cantidad);
+            if (isNaN(newCantidad) || newCantidad < 1) {
+              // Si la cantidad no es válida, restaurar al valor anterior
+              const input = document.querySelector(`input[data-product-id="${id}"]`);
+              if (input) {
+                input.value = item.cantidad;
+              }
+              return;
+            }
+
             if (newCantidad <= item.stock) {
               item.cantidad = newCantidad;
               renderOrderTable();
@@ -320,7 +388,7 @@
                 confirmButtonText: 'Aceptar'
               });
               // Restaurar la cantidad anterior
-              const input = document.querySelector(`input[onchange="updateQuantity(${id}, this.value)"]`);
+              const input = document.querySelector(`input[data-product-id="${id}"]`);
               if (input) {
                 input.value = item.cantidad;
               }
@@ -337,12 +405,24 @@
             row.innerHTML = `
               <td>${item.nombre}</td>
               <td>C$${item.precio.toFixed(2)}</td>
-              <td><input type="number" value="${item.cantidad}" min="1" onchange="updateQuantity(${item.id}, this.value)" class="form-control"></td>
+              <td>
+                <div class="input-group">
+                  <button class="btn btn-outline-secondary btn-sm" onclick="decrementQuantity(${item.id})">-</button>
+                  <input type="number" 
+                         value="${item.cantidad}" 
+                         min="1" 
+                         max="${item.stock}"
+                         data-product-id="${item.id}"
+                         onchange="updateQuantity(${item.id}, this.value)" 
+                         class="form-control text-center"
+                         style="width: 60px;">
+                  <button class="btn btn-outline-secondary btn-sm" onclick="incrementQuantity(${item.id})">+</button>
+                </div>
+              </td>
               <td>C$${total.toFixed(2)}</td>
               <td>
                 <button onclick="removeFromOrder(${item.id})" class="btn btn-danger btn-sm">
-                  <img src="../static/images/logos/delete.png" alt="Editar" width="16" height="16">
-
+                  <img src="../static/images/logos/delete.png" alt="Eliminar" width="16" height="16">
                 </button>
               </td>
             `;
@@ -363,6 +443,26 @@
           document.getElementById('total').value = `C$${total.toFixed(2)}`;
         }
         
+        function incrementQuantity(id) {
+          const item = orderItems.find(item => item.id === id);
+          if (item && item.cantidad < item.stock) {
+            updateQuantity(id, item.cantidad + 1);
+          } else if (item && item.cantidad >= item.stock) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Stock insuficiente',
+              text: 'No hay más stock disponible para este producto.',
+              confirmButtonText: 'Aceptar'
+            });
+          }
+        }
+
+        function decrementQuantity(id) {
+          const item = orderItems.find(item => item.id === id);
+          if (item && item.cantidad > 1) {
+            updateQuantity(id, item.cantidad - 1);
+          }
+        }
         
         document.addEventListener('DOMContentLoaded', loadCategories);
     </script>
@@ -419,6 +519,19 @@
 
   <script>
     document.getElementById('submit-order').addEventListener('click', function() {
+      if (!meseroSeleccionado) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Mesero no seleccionado',
+          text: 'Por favor seleccione un mesero antes de procesar el pedido.',
+          confirmButtonText: 'Aceptar'
+        }).then(() => {
+          const meseroModal = new bootstrap.Modal(document.getElementById('meseroModal'));
+          meseroModal.show();
+        });
+        return;
+      }
+      
       // Recopila los datos del pedido
       const orderData = orderItems.map(item => ({
         id: item.id,
@@ -429,18 +542,29 @@
       }));
 
       if (orderData.length === 0) {
-        alert("El pedido está vacío. Agrega productos antes de enviarlo.");
+        Swal.fire({
+          icon: 'error',
+          title: 'Pedido vacío',
+          text: 'Agrega productos antes de enviar el pedido.',
+          confirmButtonText: 'Aceptar'
+        });
         return;
       }
+
       //obtenemos el nombre del cliente
       const clienteInput = document.getElementById('nombre_cliente');
       const cliente = clienteInput ? clienteInput.value.trim() : '';
   
       const urlParams = new URLSearchParams(window.location.search);
-      const mesaId = urlParams.get('mesa_id'); // Asegúrate de que mesa_id esté en los parámetros de la URL
+      const mesaId = urlParams.get('mesa_id');
   
       if (!mesaId) {
-        alert('Error: No se pudo obtener el ID de la mesa desde la URL.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo obtener el ID de la mesa.',
+          confirmButtonText: 'Aceptar'
+        });
         return;
       }
   
@@ -450,36 +574,134 @@
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderData , cliente }), // Enviar solo los datos necesarios
+        body: JSON.stringify({ 
+          orderData, 
+          cliente,
+          mesero_id: meseroSeleccionado.id
+        }),
       })
       .then(response => {
         if (!response.ok) {
-          return response.text().then(err => { throw new Error(err); });
+          return response.json().then(err => { throw new Error(err.error || 'Error al procesar el pedido'); });
         }
         return response.json();
-        })
+      })
       .then(data => {
         if (data.redirect) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Pedido realizado correctamente',
-          text: 'Tu pedido ha sido procesado con éxito.',
-          confirmButtonText: 'Aceptar'
-        }).then(() => {
-          // Redirige después de cerrar la alerta
-          window.location.href = data.redirect;
-        });
-      } else {
-        console.log('Pedido procesado', data);
-      }
-        })
+          Swal.fire({
+            icon: 'success',
+            title: 'Pedido realizado correctamente',
+            text: 'Tu pedido ha sido procesado con éxito.',
+            confirmButtonText: 'Aceptar'
+          }).then(() => {
+            window.location.href = data.redirect;
+          });
+        }
+      })
       .catch(error => {
-        console.error('Error:', error.message); // Muestra el error exacto
-        alert('Ocurrió un error al enviar el pedido: ' + error.message);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message,
+          confirmButtonText: 'Aceptar'
+        });
       });
     });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Modal de Selección de Mesero -->
+  <div class="modal fade" id="meseroModal" tabindex="-1" aria-labelledby="meseroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="meseroModalLabel">
+                    <i class="bi bi-person-badge me-2"></i>
+                    Seleccione el Mesero
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row row-cols-2 row-cols-md-3 g-4">
+                    {% for mesero in meseros %}
+                    <div class="col">
+                        <div class="card h-100 mesero-card" 
+                             data-mesero-id="{{ mesero.id }}"
+                             onclick="seleccionarMesero(this, '{{ mesero.id }}', '{{ mesero.nombre_user }}')"
+                             style="cursor: pointer; transition: all 0.3s ease;">
+                             
+                            <div class="card-body text-center">
+                                <div class="mesero-avatar mb-3">
+                                    <img src="{{ mesero.foto_url or url_for('static', filename='images/logos/ethan.png') }} "   alt="Mesero" width="300">
+                                    <i class="bi bi-person-circle" style="font-size: 3rem; color: #0d6efd;"></i>
+                                </div>
+                                <h5 class="card-title">{{ mesero.nombre_user }}</h5>
+                                <div class="mesero-selected-indicator d-none">
+                                    <i class="bi bi-check-circle-fill text-success" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-primary btn-lg" id="confirmarMesero">
+                    <i class="bi bi-check-circle me-2"></i>Confirmar Mesero
+                </button>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    let meseroSeleccionado = null;
+
+    function seleccionarMesero(card, meseroId, meseroNombre) {
+        // Deseleccionar todas las tarjetas
+        document.querySelectorAll('.mesero-card').forEach(c => {
+            c.classList.remove('selected');
+            c.querySelector('.mesero-selected-indicator').classList.add('d-none');
+        });
+        
+        // Seleccionar la tarjeta actual
+        card.classList.add('selected');
+        card.querySelector('.mesero-selected-indicator').classList.remove('d-none');
+        
+        // Guardar la selección
+        meseroSeleccionado = {
+            id: meseroId,
+            nombre: meseroNombre
+        };
+        
+        // Actualizar el select oculto
+        const meseroSelect = document.getElementById('meseroSelect');
+        meseroSelect.value = meseroId;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mostrar modal de mesero al cargar la página
+        const meseroModal = new bootstrap.Modal(document.getElementById('meseroModal'));
+        meseroModal.show();
+
+        // Manejar la selección del mesero
+        document.getElementById('confirmarMesero').addEventListener('click', function() {
+            if (!meseroSeleccionado) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Seleccione un Mesero',
+                    text: 'Por favor, seleccione un mesero antes de continuar.',
+                    confirmButtonText: 'Aceptar'
+                });
+                return;
+            }
+            meseroModal.hide();
+        });
+    });
+  </script>
 
 </body>
 </html>

@@ -250,11 +250,12 @@
                 <span class="hide-menu">Empleados Lista</span>
               </a>
             </li>
-            </li>
             <li class="sidebar-item">
-              <a class="sidebar-link" href="{{ url_for('movimiento_caja_page') }}"aria-expanded="false">
-                <i class="bi bi-cash-stack text-secondary fs-6"></i>
-                <span class="hide-menu">GASTOS</span>
+              <a class="sidebar-link" href="{{ url_for('movimiento_caja_page') }}" aria-expanded="false">
+                <span>
+                  <i class="bi bi-cash-stack text-secondary fs-6"></i>
+                </span>
+                <span class="hide-menu">Gastos</span>
               </a>
             </li>
               
@@ -271,31 +272,61 @@
       <!--  Header Start -->
       <header class="app-header">
         <nav class="navbar navbar-expand-lg navbar-light">
-          <div class="navbar-collapse justify-content-end px-0" id="navbarNav">
-            <ul class="navbar-nav flex-row ms-auto align-items-center justify-content-end">
-              <li class="nav-item dropdown">
-                <a class="nav-link" href="javascript:void(0)" id="drop2" data-bs-toggle="dropdown"
-                  aria-expanded="false">
-                  <div class="d-flex align-items-center">
-                    <img src="../static/images/logos/negro.jpeg" alt="Usuario" width="35" height="35" class="rounded-circle">
-                    <span class="ms-2">{{ session.get('username', 'Usuario') }}</span>
-                  </div>
-                </a>
-                <div class="dropdown-menu dropdown-menu-end dropdown-menu-animate-up" aria-labelledby="drop2">
-                  <div class="message-body">
-                    {% if session.get('rol') == 'admin' %}
-                    <a href="{{ url_for('usuarios') }}" class="d-flex align-items-center gap-2 dropdown-item">
-                      <i class="bi bi-person-fill text-info fs-6"></i>
-                      <span>Usuarios</span>
-                    </a>
-                    {% endif %}
-                    <form action="{{ url_for('logout') }}" method="post">
-                      <button type="submit" class="btn btn-outline-primary mx-3 mt-2 d-block">Cerrar Sesión</button>
-                    </form>
+          <div class="container-fluid">
+            
+            <div class="d-flex align-items-center ms-auto">
+              <!-- Botón de ayuda de atajos -->
+              <button class="btn btn-link text-dark me-3" type="button" id="shortcutsHelpBtn" title="Ver atajos de teclado">
+                <i class="bi bi-keyboard"></i>
+                <span class="ms-1 d-none d-md-inline">Atajos</span>
+              </button>
+
+              {% if session.get('username') %}
+                {% if session.get('rol') in ['admin', 'mesero'] %}
+                <div class="dropdown me-3">
+                  <button class="btn btn-link position-relative p-0" type="button" id="notificacionesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-bell-fill fs-5 text-dark"></i>
+                    <span id="notificaciones-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; display: none;">
+                      0
+                    </span>
+                  </button>
+                  <div class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="notificacionesDropdown" style="width: 350px; max-height: 500px; overflow-y: auto; border: none; border-radius: 10px;">
+                    <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                      <h6 class="mb-0">Notificaciones</h6>
+                      <button class="btn btn-sm btn-link text-primary p-0" id="marcar-todas-leidas">
+                        Marcar todas como leídas
+                      </button>
+                    </div>
+                    <div id="notificaciones-lista" class="p-2">
+                      <!-- Las notificaciones se cargarán aquí dinámicamente -->
+                    </div>
                   </div>
                 </div>
-              </li>
-            </ul>
+                {% endif %}
+                
+                <div class="dropdown">
+                  <button class="btn btn-link dropdown-toggle d-flex align-items-center text-dark text-decoration-none p-0" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="fs-6">{{ session.get('username') }}</span>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userDropdown" style="border: none; border-radius: 10px; min-width: 200px;">
+                    <li class="px-3 py-2 border-bottom">
+                      <div class="d-flex align-items-center">
+                        <div>
+                          <div class="fw-bold">{{ session.get('username') }}</div>
+                          <small class="text-muted">{{ session.get('rol')|title }}</small>
+                        </div>
+                      </div>
+                    </li>
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center py-2" href="{{ url_for('logout') }}" style="color: #dc3545;">
+                        <i class="bi bi-box-arrow-right me-2"></i>
+                        <span>Cerrar sesión</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              {% endif %}
+            </div>
           </div>
         </nav>
       </header>
@@ -320,6 +351,187 @@
   <script src="../static/js/sidebarmenu.js"></script>
   <script src="../static/js/app.min.js"></script>
   <script src="../static/js/dashboard.js"></script>
+
+  <!-- Script para validación de formularios -->
+  <script>
+    // Función para sanitizar input
+    function sanitizeInput(input) {
+        return input.replace(/[<>]/g, '');
+    }
+
+    // Función para validar formularios
+    function validateForm(form) {
+        const inputs = form.querySelectorAll('input, textarea');
+        let isValid = true;
+
+        inputs.forEach(input => {
+            // Sanitizar input
+            if (input.value) {
+                input.value = sanitizeInput(input.value);
+            }
+
+            // Validar campos requeridos
+            if (input.hasAttribute('required') && !input.value.trim()) {
+                isValid = false;
+                input.classList.add('is-invalid');
+                const feedback = input.nextElementSibling;
+                if (feedback && feedback.classList.contains('invalid-feedback')) {
+                    feedback.textContent = 'Este campo es requerido';
+                }
+            } else {
+                input.classList.remove('is-invalid');
+            }
+
+            // Validar email
+            if (input.type === 'email' && input.value) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(input.value)) {
+                    isValid = false;
+                    input.classList.add('is-invalid');
+                    const feedback = input.nextElementSibling;
+                    if (feedback && feedback.classList.contains('invalid-feedback')) {
+                        feedback.textContent = 'Email inválido';
+                    }
+                }
+            }
+
+            // Validar números
+            if (input.type === 'number' && input.value) {
+                if (isNaN(input.value) || input.value < 0) {
+                    isValid = false;
+                    input.classList.add('is-invalid');
+                    const feedback = input.nextElementSibling;
+                    if (feedback && feedback.classList.contains('invalid-feedback')) {
+                        feedback.textContent = 'Debe ser un número válido';
+                    }
+                }
+            }
+
+            // Validar longitud mínima
+            if (input.hasAttribute('minlength')) {
+                const minLength = parseInt(input.getAttribute('minlength'));
+                if (input.value.length < minLength) {
+                    isValid = false;
+                    input.classList.add('is-invalid');
+                    const feedback = input.nextElementSibling;
+                    if (feedback && feedback.classList.contains('invalid-feedback')) {
+                        feedback.textContent = `Mínimo ${minLength} caracteres`;
+                    }
+                }
+            }
+        });
+
+        return isValid;
+    }
+
+    // Aplicar validación a todos los formularios
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                if (!validateForm(this)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
+            // Validación en tiempo real
+            const inputs = form.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    if (this.value) {
+                        this.value = sanitizeInput(this.value);
+                    }
+                    validateForm(form);
+                });
+
+                input.addEventListener('blur', function() {
+                    validateForm(form);
+                });
+            });
+        });
+
+        // Prevenir XSS en contenido dinámico
+        const sanitizeContent = (content) => {
+            const div = document.createElement('div');
+            div.textContent = content;
+            return div.innerHTML;
+        };
+
+        // Aplicar sanitización a contenido dinámico
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1) { // Element node
+                            const elements = node.querySelectorAll('[data-sanitize]');
+                            elements.forEach(element => {
+                                if (element.dataset.sanitize === 'true') {
+                                    element.innerHTML = sanitizeContent(element.textContent);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+
+    // Función para validar contraseña
+    function validatePassword(password) {
+        const minLength = 8;
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        const errors = [];
+        if (password.length < minLength) {
+            errors.push(`Mínimo ${minLength} caracteres`);
+        }
+        if (!hasUpperCase) {
+            errors.push('Al menos una mayúscula');
+        }
+        if (!hasLowerCase) {
+            errors.push('Al menos una minúscula');
+        }
+        if (!hasNumbers) {
+            errors.push('Al menos un número');
+        }
+        if (!hasSpecialChar) {
+            errors.push('Al menos un carácter especial');
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    // Aplicar validación de contraseña
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    passwordInputs.forEach(input => {
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        input.parentNode.appendChild(feedback);
+
+        input.addEventListener('input', function() {
+            const result = validatePassword(this.value);
+            if (this.value && !result.isValid) {
+                this.classList.add('is-invalid');
+                feedback.innerHTML = result.errors.join('<br>');
+            } else {
+                this.classList.remove('is-invalid');
+                feedback.innerHTML = '';
+            }
+        });
+    });
+  </script>
 
   <!-- Script para manejar el sidebar en móvil -->
   <script>
@@ -420,6 +632,298 @@
         sidebar.style.left = '-260px';
         sidebar.style.height = '100%';
       }
+    });
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      {% if session.get('rol') in ['admin', 'mesero'] %}
+      let notificaciones = [];
+      const notificacionesLista = document.getElementById('notificaciones-lista');
+      const notificacionesBadge = document.getElementById('notificaciones-badge');
+      const marcarTodasLeidas = document.getElementById('marcar-todas-leidas');
+
+      function actualizarNotificaciones() {
+        fetch('/notificaciones')
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              console.error('Error:', data.error);
+              return;
+            }
+            notificaciones = data;
+            actualizarInterfaz();
+          })
+          .catch(error => console.error('Error al obtener notificaciones:', error));
+      }
+
+      function actualizarInterfaz() {
+        const noLeidas = notificaciones.filter(n => !n.leida).length;
+        notificacionesBadge.textContent = noLeidas;
+        notificacionesBadge.style.display = noLeidas > 0 ? 'block' : 'none';
+
+        notificacionesLista.innerHTML = notificaciones.length ? '' : 
+          '<div class="text-center py-3 text-muted">No hay notificaciones pendientes</div>';
+        
+        notificaciones.forEach(notif => {
+          const item = document.createElement('div');
+          item.className = `dropdown-item p-3 mb-2 ${notif.leida ? '' : 'bg-light'} rounded`;
+          item.style.border = notif.leida ? 'none' : '1px solid #e9ecef';
+          
+          const productosList = notif.detalles.productos
+            .map(p => `${p.cantidad}x ${p.nombre}`)
+            .join('<br>');
+          
+          item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <strong class="text-primary">${notif.mensaje}</strong>
+                  ${!notif.leida ? `
+                    <button class="btn btn-sm btn-link text-success p-0 marcar-leida" 
+                            data-id="${notif.id}" title="Marcar como leída">
+                      <i class="bi bi-check2-circle"></i>
+                    </button>
+                  ` : ''}
+                </div>
+                <div class="small text-muted mb-2">
+                  <i class="bi bi-clock"></i> ${notif.fecha}
+                </div>
+                <div class="small mb-2">
+                  <i class="bi bi-person"></i> ${notif.detalles.cliente}
+                </div>
+                <div class="small mb-2">
+                  ${productosList}
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                  <span class="badge bg-primary">
+                    <i class="bi bi-box"></i> ${notif.detalles.total_productos} productos
+                  </span>
+                  <strong class="text-success">
+                    C$${notif.detalles.total_monto.toFixed(2)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          `;
+          notificacionesLista.appendChild(item);
+        });
+
+        // Agregar event listeners a los botones de marcar como leída
+        document.querySelectorAll('.marcar-leida').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = this.dataset.id;
+            marcarComoLeida(id);
+          });
+        });
+      }
+
+      function marcarComoLeida(id) {
+        fetch(`/marcar_notificacion_leida/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            console.error('Error:', data.error);
+            return;
+          }
+          actualizarNotificaciones();
+        })
+        .catch(error => console.error('Error al marcar notificación como leída:', error));
+      }
+
+      marcarTodasLeidas.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        notificaciones.forEach(notif => {
+          if (!notif.leida) {
+            marcarComoLeida(notif.id);
+          }
+        });
+      });
+
+      // Actualizar notificaciones cada 30 segundos
+      actualizarNotificaciones();
+      setInterval(actualizarNotificaciones, 30000);
+      {% endif %}
+    });
+  </script>
+
+  <script>
+    // Sistema de atajos de teclado
+    document.addEventListener('DOMContentLoaded', function() {
+        const ATJOS = {
+            'p': '/mesas', // Pedidos
+            'h': '/historial', // Historial
+            'c': '/clientes',  // Clientes
+            'f': '/facturacion', // Facturación
+            'i': '/ingresoproducto', // Ingreso de productos
+            'r': '/registro',  // Registro
+            'e': '/empleados'  // Empleados
+        };
+
+        // Función para mostrar el modal de ayuda de atajos
+        function showShortcutsHelp() {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'shortcutsModal';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-keyboard me-2"></i>
+                                Atajos de Teclado
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="shortcuts-grid">
+                                ${Object.entries(ATJOS).map(([key, url]) => `
+                                    <div class="shortcut-item">
+                                        <div class="shortcut-key">${key}</div>
+                                        <div class="shortcut-arrow">→</div>
+                                        <div class="shortcut-desc">${url.split('/')[1].replace(/_/g, ' ')}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="mt-3 text-muted small">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Presiona <kbd>?</kbd> en cualquier momento para ver esta ayuda
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Añadir estilos
+            const style = document.createElement('style');
+            style.textContent = `
+                .shortcuts-grid {
+                    display: grid;
+                    gap: 1rem;
+                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                }
+                .shortcut-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.5rem;
+                    background: var(--bs-light);
+                    border-radius: 0.5rem;
+                }
+                .shortcut-key {
+                    background: var(--bs-primary);
+                    color: white;
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 0.25rem;
+                    font-weight: bold;
+                    min-width: 2rem;
+                    text-align: center;
+                }
+                .shortcut-arrow {
+                    color: var(--bs-gray);
+                }
+                .shortcut-desc {
+                    font-weight: 500;
+                }
+                kbd {
+                    background: var(--bs-dark);
+                    color: white;
+                    padding: 0.1rem 0.4rem;
+                    border-radius: 0.25rem;
+                    font-size: 0.9em;
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(modal);
+
+            // Inicializar y mostrar el modal
+            const modalInstance = new bootstrap.Modal(modal);
+            modalInstance.show();
+
+            // Limpiar el modal cuando se cierre
+            modal.addEventListener('hidden.bs.modal', function () {
+                modal.remove();
+            });
+        }
+
+        // Mostrar ayuda al hacer clic en el botón
+        document.getElementById('shortcutsHelpBtn').addEventListener('click', showShortcutsHelp);
+
+        // Función para verificar si estamos en un campo de entrada
+        function isInputField(element) {
+            if (!element) return false;
+            return element.tagName === 'INPUT' || 
+                   element.tagName === 'TEXTAREA' || 
+                   element.isContentEditable ||
+                   element.closest('input, textarea, [contenteditable]');
+        }
+
+        // Función para manejar los atajos
+        function handleShortcut(e) {
+            // Ignorar si estamos en un campo de entrada
+            if (isInputField(e.target)) {
+                return;
+            }
+
+            // Ignorar si se presiona Ctrl, Alt, Shift o Meta
+            if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) {
+                return;
+            }
+
+            // Si la tecla es una letra
+            if (e.key.length === 1 && e.key.match(/[a-z]/i)) {
+                const key = e.key.toLowerCase();
+                
+                // Verificar si la tecla es un atajo
+                if (ATJOS[key]) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Mostrar indicador visual
+                    const indicator = document.createElement('div');
+                    indicator.style.cssText = `
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        background: #fff;
+                        padding: 10px 15px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        font-size: 0.9rem;
+                        color: #333;
+                        z-index: 1000;
+                        border: 1px solid #ddd;
+                    `;
+                    indicator.textContent = `Atajo: ${key} → ${ATJOS[key].split('/')[1]}`;
+                    document.body.appendChild(indicator);
+                    
+                    // Navegar después de un breve delay
+                    setTimeout(() => {
+                        window.location.href = ATJOS[key];
+                    }, 300);
+                }
+            }
+        }
+
+        // Añadir el manejador de eventos
+        document.addEventListener('keydown', handleShortcut);
+
+        // Mostrar ayuda de atajos al presionar ?
+        document.addEventListener('keydown', function(e) {
+            if (e.key === '?' && !isInputField(e.target)) {
+                e.preventDefault();
+                e.stopPropagation();
+                showShortcutsHelp();
+            }
+        });
     });
   </script>
 </body>

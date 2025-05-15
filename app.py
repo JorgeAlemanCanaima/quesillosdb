@@ -100,6 +100,9 @@ database_path = "quesillos.db"
 connection = sqlite3.connect(database_path, check_same_thread=False)
 connection.row_factory = sqlite3.Row
 
+# Configurar la zona horaria de Nicaragua (UTC-6)
+connection.execute("PRAGMA timezone = '-06:00'")
+
 def get_db():
     """Retorna la conexión a la base de datos existente"""
     return connection
@@ -246,29 +249,26 @@ def historial():
             SELECT IFNULL(SUM(f.propina), 0) as total
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
-            WHERE date(p.fecha_hora) = date('now', 'localtime')
+            WHERE date(p.fecha_hora, 'localtime') = date('now', 'localtime')
         """)
         propinas_hoy = cursor.fetchone()['total']
-
-       
 
         # Propinas de este mes
         cursor.execute("""
             SELECT IFNULL(SUM(f.propina), 0) as total
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
-            WHERE strftime('%Y-%m', p.fecha_hora) = strftime('%Y-%m', 'now')
+            WHERE strftime('%Y-%m', p.fecha_hora, 'localtime') = strftime('%Y-%m', 'now', 'localtime')
         """)
         propinas_mes = cursor.fetchone()['total']
 
-
         # Ventas de hoy 
         cursor.execute("""
-         SELECT SUM(f.monto) as total 
-        FROM facturas f
-        JOIN pedidos p ON f.codigo = p.codigo_factura
-        WHERE date(p.fecha_hora) = date('now', 'localtime') 
-        AND f.estado = 'pagada';
+            SELECT SUM(f.monto) as total 
+            FROM facturas f
+            JOIN pedidos p ON f.codigo = p.codigo_factura
+            WHERE date(p.fecha_hora, 'localtime') = date('now', 'localtime')
+            AND f.estado = 'pagada';
         """)
         ventas_dia = cursor.fetchone()[0] or 0
 
@@ -276,7 +276,7 @@ def historial():
         cursor.execute("""
             SELECT COUNT(*) 
             FROM pedidos 
-            WHERE date(fecha_hora) =date('now', 'localtime') 
+            WHERE date(fecha_hora, 'localtime') = date('now', 'localtime')
         """)
         ordenes_dia = cursor.fetchone()[0] or 0
 
@@ -284,13 +284,13 @@ def historial():
         cursor.execute("""
             SELECT COUNT(DISTINCT clientes_id) 
             FROM pedidos 
-            WHERE date(fecha_hora) = date('now', 'localtime') 
+            WHERE date(fecha_hora, 'localtime') = date('now', 'localtime')
         """)
         clientes_dia = cursor.fetchone()[0] or 0
 
         # Ventas mensuales
         cursor.execute("""
-            SELECT strftime('%m', p.fecha_hora) as mes, SUM(f.monto) as total
+            SELECT strftime('%m', p.fecha_hora, 'localtime') as mes, SUM(f.monto) as total
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
             WHERE f.estado = 'pagada'
@@ -302,7 +302,7 @@ def historial():
             mes = int(row[0]) - 1
             ventas_mensuales[mes] = row[1] or 0
 
-         
+        # Ventas totales
         cursor.execute("""
             SELECT SUM(f.monto)
             FROM facturas f
@@ -324,7 +324,7 @@ def historial():
 
         # Mejores meses (top 5)
         cursor.execute("""
-            SELECT strftime('%m', p.fecha_hora) as mes, SUM(f.monto) as total
+            SELECT strftime('%m', p.fecha_hora, 'localtime') as mes, SUM(f.monto) as total
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
             WHERE f.estado = 'pagada'
@@ -347,11 +347,9 @@ def historial():
                             ventas_top=ventas_top,
                             propinas_hoy=propinas_hoy,
                             propinas_mes=propinas_mes)
-
     except Exception as e:
         print(f"Error en historial: {e}")
         return "Error al obtener datos históricos", 500
-
         
 @app.route('/exportar_todas_metricas')
 @login_required
@@ -510,7 +508,7 @@ def login():
 
 
 #cierre de sesion
-@app.route("/logout", methods=['POST'])
+@app.route("/logout", methods=['GET', 'POST'])
 def logout():
     """Log user out"""
 
@@ -518,7 +516,7 @@ def logout():
     session.clear()
 
     # Redirect user to login form
-    return redirect("/")
+    return redirect("/login")
 
 # Ruta para la página principal
 @app.route('/', methods=['GET', 'POST'])
@@ -787,11 +785,35 @@ def eliminar_cliente(id):
 @login_required
 def products():    
     mesa_id = request.args.get('mesa_id')
-    print(mesa_id)
-    mesa_nombre = mesas[int(mesa_id) - 1]['nombre']
     
+    # Validar mesa_id
+    if not mesa_id or not mesa_id.isdigit() or int(mesa_id) < 1 or int(mesa_id) > len(mesas):
+        flash('Mesa no válida', 'error')
+        return redirect(url_for('mesas1'))
+        
+    mesa_id = int(mesa_id)
+    mesa_nombre = mesas[mesa_id - 1]['nombre']
+    
+    # Obtener lista de meseros
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT id, nombre_user 
+            FROM usuario_empleado 
+            WHERE rol = 'mesero'
+        """)
+        meseros = cursor.fetchall()
+    except Exception as e:
+        print(f"Error obteniendo meseros: {e}")
+        meseros = []
+    
+    # Usar hora local de Nicaragua
     fecha = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    return render_template('pedidos.html', mesa_id=mesa_id, fecha=fecha, mesa_nombre=mesa_nombre)
+    return render_template('pedidos.html', 
+                         mesa_id=mesa_id, 
+                         fecha=fecha, 
+                         mesa_nombre=mesa_nombre,
+                         meseros=meseros)
 
 #ruta para el renderizado de la plantilla de mesas
 @app.route('/mesas', methods=['GET', 'POST'])
@@ -823,101 +845,184 @@ def get_products(categoryName):
     print(product_list)
     return jsonify(product_list)
 
-#ruta del boton para atender una mesa en especifico
-#se encarga de actualizar el estado de la mesa y hacer todas las inserciones necesarias
-#en las tablas de pedido, facturas, pedido_productos y clientes
+# Lista global para almacenar las notificaciones
+notificaciones_pedidos = []
+
+@app.route('/notificaciones')
+@login_required
+def obtener_notificaciones():
+    if session.get('rol') != 'admin':
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    # Obtener solo las notificaciones no leídas
+    notificaciones_no_leidas = [n for n in notificaciones_pedidos if not n.get('leida', False)]
+    return jsonify(notificaciones_no_leidas)
+
+@app.route('/marcar_notificacion_leida/<int:notificacion_id>', methods=['POST'])
+@login_required
+def marcar_notificacion_leida(notificacion_id):
+    if session.get('rol') != 'admin':
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    for notif in notificaciones_pedidos:
+        if notif['id'] == notificacion_id:
+            notif['leida'] = True
+            break
+    
+    return jsonify({'success': True})
+
 @app.route('/atender_mesa/<int:mesa_id>', methods=['POST'])
 @login_required
 def atender_mesa(mesa_id):
-    data = request.get_json()
-    order_data = data.get('orderData')
-    cliente_nombre = data.get('cliente')
-    print(cliente_nombre)
-
-    if not cliente_nombre:
-        cliente_nombre = '-'
-    if not order_data:
-        return jsonify({"error": "Datos incompletos"}), 400
-
-    cursor = connection.cursor()
     try:
-        # Verificar stock disponible antes de procesar el pedido
-        for item in order_data:
-            cursor.execute("SELECT stock FROM productos WHERE id = ?", (item['id'],))
-            producto = cursor.fetchone()
-            if not producto or producto['stock'] < item['cantidad']:
-                return jsonify({
-                    "error": f"Stock insuficiente para el producto ID {item['id']}"
-                }), 400
-
-        # Cambiar el estado de la mesa
-        for mesa in mesas:
-            if mesa_id > 13:
-                break
-            if mesa['id'] == mesa_id:
-                mesa['atendida'] = True
-                break
+        data = request.get_json()
+        order_data = data.get('orderData', [])
+        cliente = data.get('cliente', '')
+        mesero_id = data.get('mesero_id')  # Nuevo campo para el mesero
         
-        if mesa_id == 13:
-            estado_pedido = 'domicilio'
-        else:
-            estado_pedido = 'local'
-        cursor.execute('INSERT INTO clientes (nombre, num_mesa) VALUES (?, ?)', (cliente_nombre, mesa_id))
-        cliente_id = cursor.lastrowid
-        # Insertar el pedido principal
-        fecha = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute(''' SELECT codigo FROM facturas ORDER BY codigo DESC LIMIT 1''')
-        codigo = cursor.fetchone()
-        codigo = codigo['codigo'] + 1
-        print(codigo)
-        
-        cursor.execute("""
-            INSERT INTO pedidos (fecha_hora, tipo_pedido, empleado_id, clientes_id, codigo_factura)
-            VALUES (?, ?, ?, ?, ?)
-        """, (fecha, estado_pedido, 1, cliente_id, codigo))  
-
-        # Obtener el ID del último pedido para la insercion del nuevo pedido con el id correspondiente
-        pedido_id = cursor.lastrowid
-        total_monto = 0
-        # Insertar los productos del pedido y actualizar el stock
-        for item in order_data:
-            cursor.execute("""
-                INSERT INTO pedido_productos (pedido_id, producto_id, cantidad)
-                VALUES (?, ?, ?)
-            """, (pedido_id, item['id'], item['cantidad']))
-            total_monto += float(item['total'])
+        if not order_data:
+            return jsonify({'error': 'No hay productos en el pedido'}), 400
             
-            # Actualizar el stock del producto
-            cursor.execute("""
-                UPDATE productos 
-                SET stock = stock - ? 
-                WHERE id = ?
-            """, (item['cantidad'], item['id']))
-        
-        print(total_monto)
-        cursor.execute('''INSERT INTO FACTURAS (codigo, monto, estado) 
-                       VALUES (?, ?, ?)''', (codigo, total_monto, 'pendiente'))
-             
-        # Confirmar cambios
-        connection.commit()
+        if not mesero_id:
+            return jsonify({'error': 'Debe seleccionar un mesero'}), 400
 
-        return jsonify({"message": "Pedido guardado con éxito", "redirect": url_for('mesas1')}), 200
+        cursor = connection.cursor()
+        
+        # Agrupar productos por ID y sumar cantidades
+        productos_agrupados = {}
+        for item in order_data:
+            producto_id = item['id']
+            if producto_id in productos_agrupados:
+                productos_agrupados[producto_id]['cantidad'] += item['cantidad']
+            else:
+                productos_agrupados[producto_id] = {
+                    'cantidad': item['cantidad'],
+                    'precio': item['precio'],
+                    'nombre': item['nombre']
+                }
+
+        # Verificar stock para cada producto agrupado
+        for producto_id, datos in productos_agrupados.items():
+            cursor.execute("SELECT stock FROM productos WHERE id = ?", (producto_id,))
+            result = cursor.fetchone()
+            if not result or result['stock'] < datos['cantidad']:
+                return jsonify({'error': f'Stock insuficiente para el producto {datos["nombre"]}'}), 400
+
+        # Obtener nuevo código de factura
+        cursor.execute("SELECT COALESCE(MAX(codigo), 0) FROM facturas")
+        last_code = cursor.fetchone()[0]
+        new_code = last_code + 1
+
+        # Calcular monto total usando los productos agrupados
+        monto_total = sum(datos['precio'] * datos['cantidad'] for datos in productos_agrupados.values())
+
+        try:
+            # Iniciar transacción
+            cursor.execute("BEGIN TRANSACTION")
+
+            # Insertar factura
+            cursor.execute("""
+                INSERT INTO facturas (codigo, monto, estado, fecha_creacion)
+                VALUES (?, ?, 'pendiente', datetime('now', 'localtime'))
+            """, (new_code, monto_total))
+
+            # Insertar cliente
+            cursor.execute("""
+                INSERT INTO clientes (nombre, num_mesa)
+                VALUES (?, ?)
+            """, (cliente or 'Cliente General', mesa_id))
+            cliente_id = cursor.lastrowid
+
+            # Insertar pedido con el mesero seleccionado
+            cursor.execute("""
+                INSERT INTO pedidos (fecha_hora, tipo_pedido, clientes_id, empleado_id, codigo_factura)
+                VALUES (datetime('now', 'localtime'), 'local', ?, ?, ?)
+            """, (cliente_id, mesero_id, new_code))
+            pedido_id = cursor.lastrowid
+
+            # Insertar productos del pedido (usando los productos agrupados)
+            for producto_id, datos in productos_agrupados.items():
+                # Verificar si ya existe el producto en el pedido
+                cursor.execute("""
+                    SELECT cantidad FROM pedido_productos 
+                    WHERE pedido_id = ? AND producto_id = ?
+                """, (pedido_id, producto_id))
+                existing = cursor.fetchone()
+
+                if existing:
+                    # Si existe, actualizar la cantidad
+                    nueva_cantidad = existing['cantidad'] + datos['cantidad']
+                    cursor.execute("""
+                        UPDATE pedido_productos 
+                        SET cantidad = ? 
+                        WHERE pedido_id = ? AND producto_id = ?
+                    """, (nueva_cantidad, pedido_id, producto_id))
+                else:
+                    # Si no existe, insertar nuevo
+                    cursor.execute("""
+                        INSERT INTO pedido_productos (pedido_id, producto_id, cantidad)
+                        VALUES (?, ?, ?)
+                    """, (pedido_id, producto_id, datos['cantidad']))
+                
+                # Actualizar stock
+                cursor.execute("""
+                    UPDATE productos 
+                    SET stock = stock - ? 
+                    WHERE id = ?
+                """, (datos['cantidad'], producto_id))
+
+            # Actualizar estado de la mesa
+            for mesa in mesas:
+                if mesa['id'] == mesa_id:
+                    mesa['atendida'] = True
+                    break
+
+            # Crear notificación
+            hora_actual = datetime.now().strftime('%H:%M')
+            notificacion = {
+                'id': len(notificaciones_pedidos) + 1,
+                'tipo': 'nuevo_pedido',
+                'mensaje': f'Pedido #{new_code} - Mesa {mesa_id}',
+                'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
+                'mesa_id': mesa_id,
+                'factura_id': pedido_id,
+                'leida': False,
+                'detalles': {
+                    'cliente': cliente or 'Cliente General',
+                    'hora': hora_actual,
+                    'total_productos': len(productos_agrupados),
+                    'total_monto': monto_total,
+                    'productos': [{'nombre': datos['nombre'], 'cantidad': datos['cantidad']} 
+                                for datos in productos_agrupados.values()]
+                }
+            }
+            notificaciones_pedidos.append(notificacion)
+
+            # Confirmar transacción
+            cursor.execute("COMMIT")
+
+            return jsonify({
+                'success': True,
+                'redirect': url_for('mesas1'),
+                'notificacion': notificacion
+            })
+
+        except Exception as e:
+            # Si hay error, revertir transacción
+            cursor.execute("ROLLBACK")
+            raise e
 
     except Exception as e:
-        print(f"Error al procesar el pedido: {e}")
-        connection.rollback()
-        return jsonify({"error": "Error interno del servidor"}), 500
+        print(f"Error al procesar el pedido: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/finalizar/<int:mesa_id>', methods=['GET', 'POST'])
 @login_required
 def finalizar(mesa_id):
     cursor = connection.cursor()
     if request.method == 'POST':
-        print(mesa_id)
         try:
-            #extraemos el id del pedido para poder actualizar el estado de la factura
             pedido_id = request.args.get('pedido_id')
-            #esto es para el apartado de finalizar desde la venta de mesas
             if not pedido_id:
                 cursor.execute('''SELECT 
                     pedidos.id AS id
@@ -930,27 +1035,17 @@ def finalizar(mesa_id):
             
                 pedido_id = cursor.fetchone()
                 pedido_id = pedido_id['id']
-            #finalizar desde el apartado de historial de pedidos
-            print(f'ID del pedido {pedido_id}')
 
             incluir_propina = request.form.get('propina')  
-            tipo_pago = request.form.get('tipo_pago')  # Obtener el tipo de pago
-            tipo_tarjeta = request.form.get('tipo_tarjeta') if tipo_pago == 'tarjeta' else None  # Obtener el tipo de tarjeta si es pago con tarjeta
-            print(f'Valor del checkbox {incluir_propina}')
-            print(f'Tipo de pago: {tipo_pago}')
-            print(f'Tipo de tarjeta: {tipo_tarjeta}')
+            tipo_pago = request.form.get('tipo_pago')
+            tipo_tarjeta = request.form.get('tipo_tarjeta') if tipo_pago == 'tarjeta' else None
 
-            # Calcular la propina, por ejemplo, 10% del total
             cursor.execute('SELECT monto FROM facturas WHERE codigo = (SELECT codigo_factura FROM pedidos WHERE pedidos.id = ?)', (pedido_id,))
             factura = cursor.fetchone()
-
-            #primero extraemos el monto que estaba asignado en la factura
             total_factura = factura[0]
             propina = total_factura * 0.10 if incluir_propina else 0
-            print(propina)
             nuevo_total = total_factura + propina
             
-            # ACTUALIZACIÓN MODIFICADA PARA INCLUIR LA COLUMNA PROPINA, TIPO DE PAGO Y TIPO DE TARJETA
             cursor.execute('''UPDATE facturas 
                           SET estado = 'pagada', 
                               monto = ?,
@@ -959,8 +1054,11 @@ def finalizar(mesa_id):
                               tipo_tarjeta = ?
                           WHERE codigo = (SELECT codigo_factura FROM pedidos WHERE pedidos.id = ?)''', 
                           (nuevo_total, propina, tipo_pago, tipo_tarjeta, pedido_id))
+
+            # Eliminar la notificación asociada al pedido pagado
+            global notificaciones_pedidos
+            notificaciones_pedidos = [n for n in notificaciones_pedidos if n.get('factura_id') != pedido_id]
             
-        #manejo de errores 
         except Exception as e:
             print('No se puedo actualizar el estado de la factura', e)
         for mesa in mesas:
@@ -1037,7 +1135,7 @@ def facturacion():
 
         # Consulta base para facturas
         query = '''
-            SELECT 
+            SELECT DISTINCT
                 cl.nombre,
                 f.codigo, 
                 f.monto, 
@@ -1045,14 +1143,14 @@ def facturacion():
                 p.fecha_hora, 
                 cl.num_mesa, 
                 p.id AS pedido_id,
-                e.nombre AS mesero,  
+                COALESCE(ue.nombre_user, 'Sin asignar') AS mesero,  
                 f.propina,
                 f.tipo_pago,
                 f.tipo_tarjeta
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
             JOIN clientes cl ON p.clientes_id = cl.id
-            JOIN empleados e ON p.empleado_id = e.id
+            LEFT JOIN usuario_empleado ue ON p.empleado_id = ue.id AND ue.rol = 'mesero'
         '''
         
         conditions = []
@@ -1073,13 +1171,15 @@ def facturacion():
                 fecha_inicio = hoy - timedelta(days=30)
             
             if fecha_inicio:
-                conditions.append("p.fecha_hora >= ?")
-                params.append(fecha_inicio)
+                conditions.append("p.fecha_hora >= datetime(?, 'localtime')")
+                params.append(fecha_inicio.strftime('%Y-%m-%d %H:%M:%S'))
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " ORDER BY p.fecha_hora DESC"
+        # Ordenar por código de factura de manera ascendente
+        query += " ORDER BY CAST(f.codigo AS INTEGER) ASC"
+        
         cursor.execute(query, params)
         facturas = cursor.fetchall()
 
@@ -1203,7 +1303,7 @@ def registro():
         else:
             inicio = None
         if inicio:
-            filters.append("ei.fecha_entrada >= ?")
+            filters.append("ei.fecha_entrada >= datetime(?, 'localtime')")
             params.append(inicio.strftime('%Y-%m-%d %H:%M:%S'))
     if filters:
         query += " WHERE " + " AND ".join(filters)
@@ -1438,6 +1538,61 @@ def movimiento_caja_page():
     ).fetchall()
     return render_template('movimiento_caja.html', movimientos=movimientos)
 
+@app.route('/debug_db')
+@login_required
+@role_required(['admin'])
+def debug_db():
+    try:
+        cursor = connection.cursor()
+        
+        # Verificar facturas
+        cursor.execute("SELECT * FROM facturas")
+        facturas = cursor.fetchall()
+        facturas_info = [dict(row) for row in facturas]
+        
+        # Verificar pedidos
+        cursor.execute("SELECT * FROM pedidos")
+        pedidos = cursor.fetchall()
+        pedidos_info = [dict(row) for row in pedidos]
+        
+        # Verificar pedido_productos
+        cursor.execute("SELECT * FROM pedido_productos")
+        pedido_productos = cursor.fetchall()
+        pedido_productos_info = [dict(row) for row in pedido_productos]
+        
+        # Verificar clientes
+        cursor.execute("SELECT * FROM clientes")
+        clientes = cursor.fetchall()
+        clientes_info = [dict(row) for row in clientes]
+        
+        # Verificar productos
+        cursor.execute("SELECT * FROM productos")
+        productos = cursor.fetchall()
+        productos_info = [dict(row) for row in productos]
+        
+        # Consulta específica para verificar ventas de hoy
+        cursor.execute("""
+            SELECT f.*, p.fecha_hora, p.id as pedido_id
+            FROM facturas f
+            JOIN pedidos p ON f.codigo = p.codigo_factura
+            WHERE date(p.fecha_hora, 'localtime') = date('now', 'localtime')
+        """)
+        ventas_hoy = cursor.fetchall()
+        ventas_hoy_info = [dict(row) for row in ventas_hoy]
+        
+        debug_info = {
+            'facturas': facturas_info,
+            'pedidos': pedidos_info,
+            'pedido_productos': pedido_productos_info,
+            'clientes': clientes_info,
+            'productos': productos_info,
+            'ventas_hoy': ventas_hoy_info
+        }
+        
+        return jsonify(debug_info)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

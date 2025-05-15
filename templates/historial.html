@@ -154,7 +154,11 @@
                             <i class="bi bi-people text-info fs-4"></i>
                         </div>
                         <small class="text-muted">
-                            {{ ((clientes_dia/ordenes_dia)*100)|round(1) if ordenes_dia > 0 else 0 }}% recurrentes
+                            {% if ordenes_dia > 0 %}
+                                {{ ((clientes_dia / ordenes_dia) * 100) | round(1) }}% recurrentes
+                            {% else %}
+                                0% recurrentes
+                            {% endif %}
                         </small>
                     </div>
                 </a>
