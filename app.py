@@ -1703,5 +1703,92 @@ def cocina_pedidos_pendientes():
 
     return render_template('cocina_pedidos_pendientes.html', pedidos=pedidos_con_productos, mesas=mesas)
 
+@app.route('/cierre-corte', methods=['GET', 'POST'])
+@login_required
+def cierre_corte():
+    cursor = connection.cursor()
+
+    # Calcular gastos y entradas del día SIN corte asignado
+    cursor.execute("""
+        SELECT IFNULL(SUM(CASE WHEN tipo = 'salida' THEN precio ELSE 0 END), 0) as gastos,
+               IFNULL(SUM(CASE WHEN tipo = 'entrada' THEN precio ELSE 0 END), 0) as entradas
+        FROM movimientos_caja
+        WHERE date(fecha) = date('now', 'localtime') AND corte_id IS NULL
+    """)
+    movs = cursor.fetchone()
+    gastos = movs['gastos'] or 0
+    entradas = movs['entradas'] or 0
+
+    # Calcular ventas del día
+    cursor.execute("""
+        SELECT 
+            IFNULL(SUM(CASE WHEN f.tipo_pago = 'efectivo' THEN f.monto ELSE 0 END), 0) as venta_efectivo,
+            IFNULL(SUM(CASE WHEN f.tipo_pago = 'tarjeta' AND f.tipo_tarjeta = 'bac' THEN f.monto ELSE 0 END), 0) as venta_bac,
+            IFNULL(SUM(CASE WHEN f.tipo_pago = 'tarjeta' AND f.tipo_tarjeta = 'banpro' THEN f.monto ELSE 0 END), 0) as venta_banpro,
+            IFNULL(SUM(f.monto), 0) as venta_total
+        FROM facturas f
+        JOIN pedidos p ON f.codigo = p.codigo_factura
+        WHERE f.estado = 'pagada' AND date(p.fecha_hora, 'localtime') = date('now', 'localtime')
+    """)
+    ventas = cursor.fetchone()
+
+    if request.method == 'POST':
+        efectivo_real = float(request.form.get('efectivo', 0))
+        diferencia_efectivo = efectivo_real - ventas['venta_efectivo']
+
+        # Validación: no permitir cierre si no hay movimientos pendientes
+        if gastos == 0 and entradas == 0:
+            flash('No hay movimientos de caja pendientes para cerrar. No se puede registrar el corte.', 'warning')
+            return redirect(url_for('cierre_corte'))
+
+        # Insertar el cierre de corte
+        cursor.execute("""
+            INSERT INTO cierres_corte (
+                fecha, usuario_id, venta_total, venta_efectivo, venta_bac, venta_banpro,
+                efectivo_real, diferencia_efectivo, gastos, entradas
+            ) VALUES (
+                datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
+        """, (
+            current_user.id, ventas['venta_total'], ventas['venta_efectivo'], ventas['venta_bac'],
+            ventas['venta_banpro'], efectivo_real, diferencia_efectivo, gastos, entradas
+        ))
+        connection.commit()
+
+        # Obtener el id del cierre recién insertado
+        cierre_id = cursor.lastrowid
+
+        # Actualizar movimientos de caja del día para asignarles el corte_id
+        cursor.execute("""
+            UPDATE movimientos_caja
+            SET corte_id = ?
+            WHERE date(fecha) = date('now', 'localtime') AND corte_id IS NULL
+        """, (cierre_id,))
+        connection.commit()
+
+        flash('Cierre de corte registrado exitosamente.', 'success')
+        return redirect(url_for('cierre_corte'))
+
+    # Historial de cierres
+    cursor.execute("""
+        SELECT c.*, u.nombre_user as usuario
+        FROM cierres_corte c
+        JOIN usuario_empleado u ON c.usuario_id = u.id
+        ORDER BY c.fecha DESC
+        LIMIT 20
+    """)
+    historial_cortes = cursor.fetchall()
+
+    # Enumerar el número de cierre del día
+    for idx, corte in enumerate(historial_cortes, 1):
+        corte['numero_cierre_dia'] = idx
+
+    return render_template('cierre_corte.html',
+                           ventas=ventas,
+                           gastos=gastos,
+                           entradas=entradas,
+                           historial_cortes=historial_cortes)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
