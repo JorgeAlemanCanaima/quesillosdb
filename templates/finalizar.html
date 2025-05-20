@@ -297,6 +297,47 @@
             align-items: center;
             gap: 0.5rem;
         }
+
+        .order-details, .summary-card {
+            width: 100%;
+        }
+
+        .form-check {
+            flex-direction: column;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .form-check-label {
+            margin-top: 0.5rem;
+        }
+
+        .input-group {
+            flex-direction: column;
+        }
+
+        .input-group-text {
+            border-radius: 0.375rem 0.375rem 0 0 !important;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .input-group .form-control {
+            border-radius: 0 0 0.375rem 0.375rem !important;
+            width: 100%;
+        }
+
+        .d-flex.gap-2 {
+            flex-direction: column;
+            gap: 0.5rem !important;
+        }
+
+        .form-check.flex-grow-1 {
+            margin: 0;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+        }
     }
     
     @media (max-width: 767.98px) {
@@ -320,9 +361,78 @@
             padding: 0.8rem;
             font-size: 1rem;
         }
-        
-        .form-check {
+
+        .order-table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .summary-title {
+            font-size: 1.1rem;
+        }
+
+        .summary-item {
+            font-size: 1rem;
+        }
+
+        .btn-finalizar {
             padding: 1rem;
+            font-size: 1rem;
+        }
+
+        .form-check-label {
+            font-size: 1rem;
+        }
+
+        .invalid-feedback {
+            font-size: 0.8rem;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .header-section {
+            padding: 1rem;
+        }
+
+        .header-title {
+            font-size: 1.4rem;
+        }
+
+        .btn-back {
+            width: 35px;
+            height: 35px;
+        }
+
+        .btn-back img {
+            height: 16px;
+            width: 16px;
+        }
+
+        .order-table th, .order-table td {
+            padding: 0.6rem;
+            font-size: 0.9rem;
+        }
+
+        .summary-item {
+            font-size: 0.9rem;
+        }
+
+        .summary-total {
+            font-size: 1.1rem;
+        }
+
+        .form-check {
+            padding: 0.8rem;
+        }
+
+        .form-check-label {
+            font-size: 0.9rem;
+        }
+
+        .btn-finalizar {
+            padding: 0.8rem;
+            font-size: 0.9rem;
         }
     }
 </style>
