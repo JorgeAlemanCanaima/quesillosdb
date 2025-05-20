@@ -31,6 +31,23 @@
                         <label for="direccion" class="form-label">📍 Dirección</label>
                         <textarea class="form-control rounded-3" id="direccion" name="direccion" rows="3" placeholder="ingrese" required></textarea>
                     </div>
+
+                    <!-- Campos para el usuario -->
+                    <div class="col-12 mt-4">
+                        <h4 class="border-bottom pb-2">📱 Datos de Usuario</h4>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">📧 Correo Electrónico</label>
+                        <input type="email" class="form-control rounded-3" id="email" name="email" placeholder="ejemplo@correo.com" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="username" class="form-label">👤 Nombre de Usuario</label>
+                        <input type="text" class="form-control rounded-3" id="username" name="username" placeholder="nombre de usuario" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">🔑 Contraseña</label>
+                        <input type="password" class="form-control rounded-3" id="password" name="password" placeholder="contraseña" maxlength="5" required>
+                    </div>
                 </div>
                 <div class="text-center mt-4">
                     <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm">
@@ -48,6 +65,15 @@
         if (nombre.length < 3) {
             e.preventDefault();
             alert("⚠️ El nombre debe tener al menos 3 caracteres.");
+            return;
+        }
+
+        // Validar que la contraseña tenga exactamente 5 caracteres
+        const password = document.getElementById('password').value.trim();
+        if (password.length !== 5) {
+            e.preventDefault();
+            alert("⚠️ La contraseña debe tener exactamente 5 caracteres.");
+            return;
         }
     });
 </script>

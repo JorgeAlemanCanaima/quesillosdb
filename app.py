@@ -935,8 +935,8 @@ def atender_mesa(mesa_id):
 
             # Insertar pedido con el mesero seleccionado
             cursor.execute("""
-                INSERT INTO pedidos (fecha_hora, tipo_pedido, clientes_id, empleado_id, codigo_factura)
-                VALUES (datetime('now', 'localtime'), 'local', ?, ?, ?)
+                INSERT INTO pedidos (fecha_hora, tipo_pedido, clientes_id, empleado_id, codigo_factura, estado)
+                VALUES (datetime('now', 'localtime'), 'local', ?, ?, ?, 'pendiente')
             """, (cliente_id, mesero_id, new_code))
             pedido_id = cursor.lastrowid
 
@@ -1224,18 +1224,42 @@ def empleados():
         salario = request.form['salario']
         telefono = request.form['telefono']
         direccion = request.form['direccion']
+        email = request.form.get('email', '')  # Nuevo campo para email
+        username = request.form.get('username', '')  # Nuevo campo para nombre de usuario
+        password = request.form.get('password', '')  # Nuevo campo para contraseña
 
         try:
             cursor = connection.cursor()
+            
+            # Iniciar transacción
+            cursor.execute("BEGIN TRANSACTION")
+            
+            # 1. Insertar en la tabla empleados
             cursor.execute("""
                 INSERT INTO empleados (nombre, cargo, salario, telefono, direccion) 
                 VALUES (?, ?, ?, ?, ?)
             """, (nombre, cargo, salario, telefono, direccion))
+            
+            # 2. Si se proporcionaron credenciales, crear usuario
+            if username and password:
+                # Determinar el rol basado en el cargo
+                rol = 'admin' if cargo.lower() == 'administrador' else 'mesero'
+                
+                cursor.execute("""
+                    INSERT INTO usuario_empleado (nombre_user, contra_user, rol, email) 
+                    VALUES (?, ?, ?, ?)
+                """, (username, password, rol, email))
+            
+            # Confirmar transacción
             connection.commit()
+            flash("Empleado registrado exitosamente", "success")
             return redirect(url_for('mostrar_empleados'))
-        except: 
-            flash("No se puede ingresar el empleado")
-            return render_template('registro_empleado.html')  # ✅ corregido aquí
+            
+        except Exception as e:
+            # Si hay error, revertir transacción
+            connection.rollback()
+            flash(f"Error al registrar empleado: {str(e)}", "danger")
+            return render_template('registro_empleado.html')
     else:
         return render_template('registro_empleado.html')
 
