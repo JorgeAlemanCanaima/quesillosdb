@@ -175,6 +175,15 @@
                 <span class="hide-menu">Pedidos</span>
               </a>
             </li>
+
+            <li class="sidebar-item">
+              <a class="sidebar-link" href="{{ url_for('cocina_pedidos_pendientes') }}" aria-expanded="false">
+                <span>
+                  <i class="bi bi-clock-history text-danger fs-6"></i>
+                </span>
+                <span class="hide-menu">Cocina</span>
+              </a>
+            </li>
             {% if session.get('rol') in ['admin', 'mesero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('clientes') }}" aria-expanded="false">
@@ -635,9 +644,9 @@
     });
   </script>
 
+  {% if session.get('rol') in ['admin', 'mesero'] %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      {% if session.get('rol') in ['admin', 'mesero'] %}
       let notificaciones = [];
       const notificacionesLista = document.getElementById('notificaciones-lista');
       const notificacionesBadge = document.getElementById('notificaciones-badge');
@@ -751,9 +760,9 @@
       // Actualizar notificaciones cada 30 segundos
       actualizarNotificaciones();
       setInterval(actualizarNotificaciones, 30000);
-      {% endif %}
     });
   </script>
+  {% endif %}
 
   <script>
     // Sistema de atajos de teclado

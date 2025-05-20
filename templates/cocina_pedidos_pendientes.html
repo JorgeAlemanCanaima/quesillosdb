@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Pedidos Pendientes Cocina
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4">Pedidos Pendientes</h1>
+
+    <div class="row">
+        {% for pedido in pedidos %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    Pedido #{{ pedido.factura_codigo }} - Mesa {{ mesas[pedido.num_mesa - 1].nombre }}
+                </div>
+                <div class="card-body">
+                    <p class="card-text"><strong>Hora:</strong> {{ pedido.fecha_hora }}</p>
+                    <h6 class="card-subtitle mb-2 text-muted">Productos:</h6>
+                    <ul>
+                        {% for item in pedido.productos %}
+                        <li>{{ item.producto_nombre }} x {{ item.cantidad }}</li>
+                        {% endfor %}
+                    </ul>
+                    </div>
+                <div class="card-footer text-end">
+                    <a href="{{ url_for('finalizar', mesa_id=pedido.num_mesa) }}?pedido_id={{ pedido.pedido_id }}" class="btn btn-success btn-sm">Marcar como listo</a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info" role="alert">
+                No hay pedidos pendientes en este momento.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

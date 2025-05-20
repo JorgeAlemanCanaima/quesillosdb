@@ -570,7 +570,7 @@ def usuarios():
 #ruta para el ingreso de productos
 @app.route('/ingresoproducto', methods=['GET', 'POST'])
 @login_required
-@role_required(['admin', 'mesero'])  # Permitir acceso a admin y mesero
+@role_required(['admin', 'mesero', 'cocinero'])  # Permitir acceso a admin, mesero y cocinero
 def ingresoproducto():
     if request.method == 'POST':
         nombre = request.form['nombre']
@@ -595,7 +595,7 @@ def ingresoproducto():
 #Ruta en la que podemos ver todo el listado de platillos y bebidas
 @app.route('/catalogoproductos', methods=['GET', 'POST'])
 @login_required
-@role_required(['admin', 'mesero'])  # Solo administradores pueden acceder
+@role_required(['admin', 'mesero', 'cocinero'])  # Permitir acceso a admin, mesero y cocinero
 def catalogoproductos():
     try:
         cursor = connection.cursor()
@@ -615,7 +615,7 @@ def catalogoproductos():
 #Ruta en la que podemos ver todo el listado de platillos y bebidas
 @app.route('/entradaproducto', methods=['GET', 'POST'])
 @login_required
-@role_required(['admin', 'mesero'])  # Permitir acceso a admin y mesero
+@role_required(['admin', 'mesero', 'cocinero'])  # Permitir acceso a admin, mesero y cocinero
 def entradaproductos():
     try:
         cursor = connection.cursor()
@@ -858,6 +858,7 @@ notificaciones_pedidos = []
 
 @app.route('/notificaciones')
 @login_required
+@role_required(['admin', 'mesero'])  # Permitir acceso a admin y meseros
 def obtener_notificaciones():
     if session.get('rol') != 'admin':
         return jsonify({'error': 'No autorizado'}), 403
@@ -1027,6 +1028,7 @@ def atender_mesa(mesa_id):
 @app.route('/finalizar/<int:mesa_id>', methods=['GET', 'POST'])
 @login_required
 def finalizar(mesa_id):
+    global notificaciones_pedidos
     cursor = connection.cursor()
     if request.method == 'POST':
         try:
@@ -1069,8 +1071,30 @@ def finalizar(mesa_id):
                           SET estado = 'completado'
                           WHERE id = ?''', (pedido_id,))
 
+            # Crear notificación para indicar que el pedido está listo en cocina
+            cursor.execute('SELECT f.codigo, cl.num_mesa FROM facturas f JOIN pedidos p ON f.codigo = p.codigo_factura JOIN clientes cl ON p.clientes_id = cl.id WHERE p.id = ?', (pedido_id,))
+            pedido_info = cursor.fetchone()
+            if pedido_info:
+                factura_codigo = pedido_info['codigo']
+                num_mesa = pedido_info['num_mesa']
+                mesa_nombre = mesas[num_mesa - 1]['nombre'] if 0 < num_mesa <= len(mesas) else f'Mesa {num_mesa}'
+
+                hora_actual = datetime.now().strftime('%H:%M')
+                notificacion = {
+                    'id': len(notificaciones_pedidos) + 1, # Generar ID simple
+                    'tipo': 'pedido_listo',
+                    'mensaje': f'Pedido #{factura_codigo} - {mesa_nombre} está listo',
+                    'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
+                    'mesa_id': num_mesa,
+                    'pedido_id': pedido_id,
+                    'leida': False,
+                    'detalles': {
+                        'mensaje_cocina': f'El pedido #{factura_codigo} de la {mesa_nombre} ha sido marcado como listo por cocina.'
+                    }
+                }
+                notificaciones_pedidos.append(notificacion)
+
             # Eliminar la notificación asociada al pedido pagado
-            global notificaciones_pedidos
             notificaciones_pedidos = [n for n in notificaciones_pedidos if n.get('factura_id') != pedido_id]
             
         except Exception as e:
@@ -1261,7 +1285,12 @@ def empleados():
             # 2. Si se proporcionaron credenciales, crear usuario
             if username and password:
                 # Determinar el rol basado en el cargo
-                rol = 'admin' if cargo.lower() == 'administrador' else 'mesero'
+                if cargo.lower() == 'administrador':
+                    rol = 'admin'
+                elif cargo.lower() == 'cocinero':
+                    rol = 'cocinero'
+                else:
+                    rol = 'mesero'
                 
                 cursor.execute("""
                     INSERT INTO usuario_empleado (nombre_user, contra_user, rol, email) 
@@ -1314,7 +1343,7 @@ def eliminar_producto(id):
 
 @app.route('/registro', methods=['GET', 'POST'])
 @login_required
-@role_required(['admin'])  # Solo administradores pueden acceder
+@role_required(['admin', 'cocinero'])  # Permitir acceso a admin y cocinero
 def registro():
     cursor = connection.cursor()
     cursor.execute("SELECT id, nombre FROM productos")
@@ -1635,6 +1664,44 @@ def debug_db():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/cocina/pedidos_pendientes')
+@login_required
+@role_required(['cocinero', 'admin'])  # Permitir acceso a cocineros y administradores
+def cocina_pedidos_pendientes():
+    cursor = connection.cursor()
+    # Obtener pedidos pendientes con información de mesa y productos
+    cursor.execute('''
+        SELECT 
+            p.id AS pedido_id,
+            p.fecha_hora,
+            cl.num_mesa,
+            f.codigo AS factura_codigo
+        FROM pedidos p
+        JOIN facturas f ON p.codigo_factura = f.codigo
+        JOIN clientes cl ON p.clientes_id = cl.id
+        WHERE f.estado = 'pendiente'
+        ORDER BY p.fecha_hora ASC
+    ''')
+    pedidos_pendientes = cursor.fetchall()
+
+    pedidos_con_productos = []
+    for pedido in pedidos_pendientes:
+        cursor.execute('''
+            SELECT 
+                pr.nombre AS producto_nombre,
+                pp.cantidad
+            FROM pedido_productos pp
+            JOIN productos pr ON pp.producto_id = pr.id
+            WHERE pp.pedido_id = ?
+        ''', (pedido['pedido_id'],))
+        productos = cursor.fetchall()
+        
+        pedido_dict = dict(pedido)
+        pedido_dict['productos'] = productos
+        pedidos_con_productos.append(pedido_dict)
+
+    return render_template('cocina_pedidos_pendientes.html', pedidos=pedidos_con_productos, mesas=mesas)
 
 if __name__ == '__main__':
     app.run(debug=True)
