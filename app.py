@@ -1736,21 +1736,16 @@ def cierre_corte():
         efectivo_real = float(request.form.get('efectivo', 0))
         diferencia_efectivo = efectivo_real - ventas['venta_efectivo']
 
-        # Validación: no permitir cierre si no hay movimientos pendientes
-        if gastos == 0 and entradas == 0:
-            flash('No hay movimientos de caja pendientes para cerrar. No se puede registrar el corte.', 'warning')
-            return redirect(url_for('cierre_corte'))
-
-        # Insertar el cierre de corte
+        # Registrar el cierre de corte
         cursor.execute("""
             INSERT INTO cierres_corte (
                 fecha, usuario_id, venta_total, venta_efectivo, venta_bac, venta_banpro,
                 efectivo_real, diferencia_efectivo, gastos, entradas
             ) VALUES (
-                datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?
+                datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, (
-            current_user.id, ventas['venta_total'], ventas['venta_efectivo'], ventas['venta_bac'],
+            session['user_id'], ventas['venta_total'], ventas['venta_efectivo'], ventas['venta_bac'],
             ventas['venta_banpro'], efectivo_real, diferencia_efectivo, gastos, entradas
         ))
         connection.commit()
@@ -1758,13 +1753,25 @@ def cierre_corte():
         # Obtener el id del cierre recién insertado
         cierre_id = cursor.lastrowid
 
-        # Actualizar movimientos de caja del día para asignarles el corte_id
+        # Actualizar facturas pagadas del día para asignarles el corte_id
         cursor.execute("""
-            UPDATE movimientos_caja
+            UPDATE facturas
             SET corte_id = ?
-            WHERE date(fecha) = date('now', 'localtime') AND corte_id IS NULL
+            WHERE estado = 'pagada'
+            AND codigo IN (
+                SELECT f.codigo
+                FROM facturas f
+                JOIN pedidos p ON f.codigo = p.codigo_factura
+                WHERE date(p.fecha_hora, 'localtime') = date('now', 'localtime')
+                AND f.corte_id IS NULL
+            )
         """, (cierre_id,))
         connection.commit()
+
+        # Reiniciar los valores de gastos y entradas a 0 para el siguiente corte
+        gastos = 0
+        entradas = 0
+        ventas = {'venta_total': 0, 'venta_efectivo': 0, 'venta_bac': 0, 'venta_banpro': 0}
 
         flash('Cierre de corte registrado exitosamente.', 'success')
         return redirect(url_for('cierre_corte'))
@@ -1780,6 +1787,7 @@ def cierre_corte():
     historial_cortes = cursor.fetchall()
 
     # Enumerar el número de cierre del día
+    historial_cortes = [dict(corte) for corte in historial_cortes]
     for idx, corte in enumerate(historial_cortes, 1):
         corte['numero_cierre_dia'] = idx
 

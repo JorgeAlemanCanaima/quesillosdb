@@ -166,16 +166,17 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const btn = document.querySelector('button[type="submit"]');
-    const gastos = parseFloat(document.getElementById('gastos').value);
-    const entradas = parseFloat(document.getElementById('entradas').value);
-    if (gastos === 0 && entradas === 0) {
-        btn.disabled = true;
-        btn.classList.add('btn-secondary');
-        btn.classList.remove('btn-primary');
-        btn.innerHTML = '<i class="bi bi-x-circle"></i> No hay movimientos para cerrar';
-    }
-});
+// Elimina o comenta este bloque para que el botón siempre esté habilitado
+// document.addEventListener('DOMContentLoaded', function() {
+//     const btn = document.querySelector('button[type="submit"]');
+//     const gastos = parseFloat(document.getElementById('gastos').value);
+//     const entradas = parseFloat(document.getElementById('entradas').value);
+//     if (gastos === 0 && entradas === 0) {
+//         btn.disabled = true;
+//         btn.classList.add('btn-secondary');
+//         btn.classList.remove('btn-primary');
+//         btn.innerHTML = '<i class="bi bi-x-circle"></i> No hay movimientos para cerrar';
+//     }
+// });
 </script>
 {% endblock %}
