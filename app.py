@@ -103,6 +103,14 @@ connection.row_factory = sqlite3.Row
 # Configurar la zona horaria de Nicaragua (UTC-6)
 connection.execute("PRAGMA timezone = '-06:00'")
 
+# Asegurar que la tabla pedidos tenga la columna estado
+try:
+    connection.execute("ALTER TABLE pedidos ADD COLUMN estado TEXT DEFAULT 'pendiente'")
+    connection.commit()
+except sqlite3.OperationalError:
+    # La columna ya existe, no hacer nada
+    pass
+
 def get_db():
     """Retorna la conexión a la base de datos existente"""
     return connection
@@ -935,8 +943,8 @@ def atender_mesa(mesa_id):
 
             # Insertar pedido con el mesero seleccionado
             cursor.execute("""
-                INSERT INTO pedidos (fecha_hora, tipo_pedido, clientes_id, empleado_id, codigo_factura, estado)
-                VALUES (datetime('now', 'localtime'), 'local', ?, ?, ?, 'pendiente')
+                INSERT INTO pedidos (fecha_hora, tipo_pedido, clientes_id, empleado_id, codigo_factura)
+                VALUES (datetime('now', 'localtime'), 'local', ?, ?, ?)
             """, (cliente_id, mesero_id, new_code))
             pedido_id = cursor.lastrowid
 
@@ -1046,6 +1054,7 @@ def finalizar(mesa_id):
             propina = total_factura * 0.10 if incluir_propina else 0
             nuevo_total = total_factura + propina
             
+            # Actualizar factura
             cursor.execute('''UPDATE facturas 
                           SET estado = 'pagada', 
                               monto = ?,
@@ -1055,17 +1064,26 @@ def finalizar(mesa_id):
                           WHERE codigo = (SELECT codigo_factura FROM pedidos WHERE pedidos.id = ?)''', 
                           (nuevo_total, propina, tipo_pago, tipo_tarjeta, pedido_id))
 
+            # Actualizar estado del pedido
+            cursor.execute('''UPDATE pedidos 
+                          SET estado = 'completado'
+                          WHERE id = ?''', (pedido_id,))
+
             # Eliminar la notificación asociada al pedido pagado
             global notificaciones_pedidos
             notificaciones_pedidos = [n for n in notificaciones_pedidos if n.get('factura_id') != pedido_id]
             
         except Exception as e:
             print('No se puedo actualizar el estado de la factura', e)
+            flash('Error al finalizar el pedido', 'error')
+            return redirect(url_for('mesas1'))
+
         for mesa in mesas:
             if mesa['id'] == mesa_id:
                 mesa['atendida'] = False
                 break
         connection.commit()
+        flash('Pedido finalizado exitosamente', 'success')
         return redirect(url_for('mesas1'))
     else:
         pedido_id = request.args.get('pedido_id')
