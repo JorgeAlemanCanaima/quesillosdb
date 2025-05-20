@@ -858,27 +858,32 @@ notificaciones_pedidos = []
 
 @app.route('/notificaciones')
 @login_required
-@role_required(['admin', 'mesero'])  # Permitir acceso a admin y meseros
+@role_required(['admin', 'mesero', 'cocinero'])  # Permitir acceso a admin, meseros y cocineros
 def obtener_notificaciones():
-    if session.get('rol') != 'admin':
-        return jsonify({'error': 'No autorizado'}), 403
-    
     # Obtener solo las notificaciones no leídas
     notificaciones_no_leidas = [n for n in notificaciones_pedidos if not n.get('leida', False)]
     return jsonify(notificaciones_no_leidas)
 
 @app.route('/marcar_notificacion_leida/<int:notificacion_id>', methods=['POST'])
 @login_required
+@role_required(['admin', 'mesero', 'cocinero'])
 def marcar_notificacion_leida(notificacion_id):
-    if session.get('rol') != 'admin':
-        return jsonify({'error': 'No autorizado'}), 403
-    
-    for notif in notificaciones_pedidos:
-        if notif['id'] == notificacion_id:
-            notif['leida'] = True
-            break
-    
-    return jsonify({'success': True})
+    try:
+        # Buscar la notificación por ID
+        notificacion_encontrada = False
+        for notif in notificaciones_pedidos:
+            if notif['id'] == notificacion_id:
+                notif['leida'] = True
+                notificacion_encontrada = True
+                break
+        
+        if not notificacion_encontrada:
+            return jsonify({'error': 'Notificación no encontrada'}), 404
+            
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error al marcar notificación como leída: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/atender_mesa/<int:mesa_id>', methods=['POST'])
 @login_required
@@ -1071,9 +1076,30 @@ def finalizar(mesa_id):
                           SET estado = 'completado'
                           WHERE id = ?''', (pedido_id,))
 
-            # Crear notificación para indicar que el pedido está listo en cocina
-            cursor.execute('SELECT f.codigo, cl.num_mesa FROM facturas f JOIN pedidos p ON f.codigo = p.codigo_factura JOIN clientes cl ON p.clientes_id = cl.id WHERE p.id = ?', (pedido_id,))
+            # Obtener información detallada del pedido para la notificación
+            cursor.execute('''
+                SELECT 
+                    f.codigo,
+                    cl.num_mesa,
+                    cl.nombre as cliente_nombre,
+                    (SELECT GROUP_CONCAT(pr.nombre || ' x' || pp.cantidad)
+                     FROM pedido_productos pp
+                     JOIN productos pr ON pp.producto_id = pr.id
+                     WHERE pp.pedido_id = p.id) as productos,
+                    (SELECT SUM(pr.precio * pp.cantidad)
+                     FROM pedido_productos pp
+                     JOIN productos pr ON pp.producto_id = pr.id
+                     WHERE pp.pedido_id = p.id) as total_monto,
+                    (SELECT COUNT(*)
+                     FROM pedido_productos
+                     WHERE pedido_id = p.id) as total_productos
+                FROM pedidos p
+                JOIN facturas f ON p.codigo_factura = f.codigo
+                JOIN clientes cl ON p.clientes_id = cl.id
+                WHERE p.id = ?
+            ''', (pedido_id,))
             pedido_info = cursor.fetchone()
+
             if pedido_info:
                 factura_codigo = pedido_info['codigo']
                 num_mesa = pedido_info['num_mesa']
@@ -1081,15 +1107,20 @@ def finalizar(mesa_id):
 
                 hora_actual = datetime.now().strftime('%H:%M')
                 notificacion = {
-                    'id': len(notificaciones_pedidos) + 1, # Generar ID simple
-                    'tipo': 'pedido_listo',
-                    'mensaje': f'Pedido #{factura_codigo} - {mesa_nombre} está listo',
+                    'id': len(notificaciones_pedidos) + 1,
+                    'tipo': 'pedido_completado',
+                    'mensaje': f'Pedido #{factura_codigo} - {mesa_nombre} completado',
                     'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
                     'mesa_id': num_mesa,
                     'pedido_id': pedido_id,
                     'leida': False,
                     'detalles': {
-                        'mensaje_cocina': f'El pedido #{factura_codigo} de la {mesa_nombre} ha sido marcado como listo por cocina.'
+                        'cliente': pedido_info['cliente_nombre'],
+                        'hora': hora_actual,
+                        'total_productos': pedido_info['total_productos'],
+                        'total_monto': pedido_info['total_monto'],
+                        'productos': [{'nombre': p.split(' x')[0], 'cantidad': int(p.split(' x')[1])} 
+                                    for p in pedido_info['productos'].split(',')] if pedido_info['productos'] else []
                     }
                 }
                 notificaciones_pedidos.append(notificacion)
@@ -1680,7 +1711,7 @@ def cocina_pedidos_pendientes():
         FROM pedidos p
         JOIN facturas f ON p.codigo_factura = f.codigo
         JOIN clientes cl ON p.clientes_id = cl.id
-        WHERE f.estado = 'pendiente'
+        WHERE f.estado = 'pendiente' AND (p.estado IS NULL OR p.estado != 'listo')
         ORDER BY p.fecha_hora ASC
     ''')
     pedidos_pendientes = cursor.fetchall()
@@ -1797,6 +1828,82 @@ def cierre_corte():
                            entradas=entradas,
                            historial_cortes=historial_cortes)
 
+@app.route('/cocina/marcar_listo/<int:pedido_id>', methods=['POST'])
+@login_required
+@role_required(['cocinero', 'admin'])
+def marcar_pedido_listo(pedido_id):
+    global notificaciones_pedidos
+    try:
+        cursor = connection.cursor()
+        
+        # Obtener información del pedido
+        cursor.execute('''
+            SELECT f.codigo, cl.num_mesa, cl.nombre as cliente_nombre,
+                   (SELECT GROUP_CONCAT(pr.nombre || ' x' || pp.cantidad)
+                    FROM pedido_productos pp
+                    JOIN productos pr ON pp.producto_id = pr.id
+                    WHERE pp.pedido_id = p.id) as productos,
+                   (SELECT SUM(pr.precio * pp.cantidad)
+                    FROM pedido_productos pp
+                    JOIN productos pr ON pp.producto_id = pr.id
+                    WHERE pp.pedido_id = p.id) as total_monto,
+                   (SELECT COUNT(*)
+                    FROM pedido_productos
+                    WHERE pedido_id = p.id) as total_productos
+            FROM pedidos p
+            JOIN facturas f ON p.codigo_factura = f.codigo
+            JOIN clientes cl ON p.clientes_id = cl.id
+            WHERE p.id = ?
+        ''', (pedido_id,))
+        pedido_info = cursor.fetchone()
+        
+        if not pedido_info:
+            return jsonify({'error': 'Pedido no encontrado'}), 404
+            
+        factura_codigo = pedido_info['codigo']
+        num_mesa = pedido_info['num_mesa']
+        mesa_nombre = mesas[num_mesa - 1]['nombre'] if 0 < num_mesa <= len(mesas) else f'Mesa {num_mesa}'
+        
+        # Actualizar estado del pedido
+        cursor.execute('''
+            UPDATE pedidos 
+            SET estado = 'listo'
+            WHERE id = ?
+        ''', (pedido_id,))
+        
+        # Crear notificación
+        hora_actual = datetime.now().strftime('%H:%M')
+        notificacion = {
+            'id': len(notificaciones_pedidos) + 1,
+            'tipo': 'pedido_listo',
+            'mensaje': f'Pedido #{factura_codigo} - {mesa_nombre} está listo',
+            'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'mesa_id': num_mesa,
+            'pedido_id': pedido_id,
+            'leida': False,
+            'detalles': {
+                'cliente': pedido_info['cliente_nombre'],
+                'hora': hora_actual,
+                'total_productos': pedido_info['total_productos'],
+                'total_monto': pedido_info['total_monto'],
+                'productos': [{'nombre': p.split(' x')[0], 'cantidad': int(p.split(' x')[1])} 
+                            for p in pedido_info['productos'].split(',')] if pedido_info['productos'] else []
+            }
+        }
+        notificaciones_pedidos.append(notificacion)
+        
+        # Actualizar estado de la mesa
+        for mesa in mesas:
+            if mesa['id'] == num_mesa:
+                mesa['atendida'] = True
+                break
+        
+        connection.commit()
+        return jsonify({'success': True, 'message': 'Pedido marcado como listo'})
+        
+    except Exception as e:
+        print(f"Error al marcar pedido como listo: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -5,12 +5,15 @@ Pedidos Pendientes Cocina
 {% endblock %}
 
 {% block main %}
+<!-- Agregar SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <div class="container-fluid">
     <h1 class="h3 mb-4">Pedidos Pendientes</h1>
 
-    <div class="row">
+    <div class="row" id="pedidos-container">
         {% for pedido in pedidos %}
-        <div class="col-md-4 mb-4">
+        <div class="col-md-4 mb-4 pedido-card" id="pedido-{{ pedido.pedido_id }}">
             <div class="card h-100">
                 <div class="card-header bg-primary text-white">
                     Pedido #{{ pedido.factura_codigo }} - Mesa {{ mesas[pedido.num_mesa - 1].nombre }}
@@ -23,9 +26,9 @@ Pedidos Pendientes Cocina
                         <li>{{ item.producto_nombre }} x {{ item.cantidad }}</li>
                         {% endfor %}
                     </ul>
-                    </div>
+                </div>
                 <div class="card-footer text-end">
-                    <a href="{{ url_for('finalizar', mesa_id=pedido.num_mesa) }}?pedido_id={{ pedido.pedido_id }}" class="btn btn-success btn-sm">Marcar como listo</a>
+                    <button onclick="marcarListo({{ pedido.pedido_id }})" class="btn btn-success btn-sm">Marcar como listo</button>
                 </div>
             </div>
         </div>
@@ -38,4 +41,74 @@ Pedidos Pendientes Cocina
         {% endfor %}
     </div>
 </div>
+
+<script>
+function marcarListo(pedidoId) {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: '¿Deseas marcar este pedido como listo?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, marcar como listo',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/cocina/marcar_listo/${pedidoId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Eliminar la tarjeta del pedido de la vista
+                    const pedidoCard = document.getElementById(`pedido-${pedidoId}`);
+                    if (pedidoCard) {
+                        pedidoCard.remove();
+                    }
+                    
+                    // Si no quedan pedidos, mostrar mensaje
+                    const pedidosContainer = document.getElementById('pedidos-container');
+                    if (pedidosContainer.children.length === 0) {
+                        pedidosContainer.innerHTML = `
+                            <div class="col-12">
+                                <div class="alert alert-info" role="alert">
+                                    No hay pedidos pendientes en este momento.
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Mostrar mensaje de éxito
+                    Swal.fire({
+                        title: '¡Listo!',
+                        text: 'El pedido ha sido marcado como listo.',
+                        icon: 'success',
+                        confirmButtonText: 'Aceptar'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Error al marcar el pedido como listo: ' + data.error,
+                        icon: 'error',
+                        confirmButtonText: 'Aceptar'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Error al marcar el pedido como listo',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar'
+                });
+            });
+        }
+    });
+}
+</script>
 {% endblock %} 

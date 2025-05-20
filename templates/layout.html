@@ -299,7 +299,7 @@
               </button>
 
               {% if session.get('username') %}
-                {% if session.get('rol') in ['admin', 'mesero'] %}
+                {% if session.get('rol') in ['admin', 'mesero', 'cocinero'] %}
                 <div class="dropdown me-3">
                   <button class="btn btn-link position-relative p-0" type="button" id="notificacionesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell-fill fs-5 text-dark"></i>
@@ -652,7 +652,7 @@
     });
   </script>
 
-  {% if session.get('rol') in ['admin', 'mesero'] %}
+  {% if session.get('rol') in ['admin', 'mesero', 'cocinero'] %}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       let notificaciones = [];
@@ -676,12 +676,22 @@
 
       function actualizarInterfaz() {
         const noLeidas = notificaciones.filter(n => !n.leida).length;
-        notificacionesBadge.textContent = noLeidas;
-        notificacionesBadge.style.display = noLeidas > 0 ? 'block' : 'none';
-
-        notificacionesLista.innerHTML = notificaciones.length ? '' : 
-          '<div class="text-center py-3 text-muted">No hay notificaciones pendientes</div>';
         
+        // Actualizar badge y su visibilidad
+        if (noLeidas > 0) {
+          notificacionesBadge.textContent = noLeidas;
+          notificacionesBadge.style.display = 'block';
+        } else {
+          notificacionesBadge.style.display = 'none';
+        }
+
+        // Actualizar lista de notificaciones
+        if (notificaciones.length === 0) {
+          notificacionesLista.innerHTML = '<div class="text-center py-3 text-muted">No hay notificaciones pendientes</div>';
+          return;
+        }
+
+        notificacionesLista.innerHTML = '';
         notificaciones.forEach(notif => {
           const item = document.createElement('div');
           item.className = `dropdown-item p-3 mb-2 ${notif.leida ? '' : 'bg-light'} rounded`;
