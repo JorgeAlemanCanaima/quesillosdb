@@ -506,6 +506,9 @@ def login():
             print("User ID guardado en la sesión:", session.get('user_id'))
             print("Rol guardado en la sesión:", session.get('rol'))
 
+            # Redirigir según el rol
+            if user['rol'] == 'admin':
+                return redirect(url_for('admin_pedidos_en_curso'))
             return redirect(url_for('mesas1'))
         except Exception as e:
             print(f"Error en la consulta: {e}")
