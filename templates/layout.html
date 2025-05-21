@@ -18,6 +18,42 @@
       overflow-y: auto;
     }
 
+    /* Estilos para notificaciones */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1050;
+    }
+
+    .toast {
+      min-width: 300px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin-bottom: 10px;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .toast-header {
+      background: linear-gradient(45deg, #8d6e63, #bcaaa4);
+      color: white;
+      border-radius: 8px 8px 0 0;
+      padding: 0.75rem 1rem;
+    }
+
+    .toast-body {
+      padding: 1rem;
+      color: #333;
+    }
+
     /* Estilos responsivos */
     @media (max-width: 991.98px) {
       .sidebar-nav {
@@ -74,6 +110,28 @@
 
       .modal-dialog {
         margin: 0.5rem;
+      }
+
+      /* Ajustes responsivos para notificaciones */
+      .toast-container {
+        top: auto;
+        bottom: 20px;
+        right: 10px;
+        left: 10px;
+      }
+
+      .toast {
+        min-width: auto;
+        width: 100%;
+        margin-bottom: 8px;
+      }
+
+      .toast-header {
+        padding: 0.5rem 0.75rem;
+      }
+
+      .toast-body {
+        padding: 0.75rem;
       }
     }
 
