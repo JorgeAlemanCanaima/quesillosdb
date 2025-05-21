@@ -530,6 +530,13 @@ def logout():
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
+    # Obtener el rol del usuario actual
+    cursor = connection.cursor()
+    cursor.execute("SELECT rol FROM usuario_empleado WHERE id = ?", (session.get("user_id"),))
+    user = cursor.fetchone()
+    
+    if user and user['rol'] == 'admin':
+        return redirect(url_for('admin_pedidos_en_curso'))
     return redirect(url_for('mesas1'))
 
 
@@ -793,7 +800,8 @@ def eliminar_cliente(id):
 #ruta para realizar los pedidos
 @app.route('/products', methods=['GET', 'POST'])
 @login_required
-def products():    
+@role_required(['mesero']) # Restringir a meseros para ordenar
+def products():
     mesa_id = request.args.get('mesa_id')
     
     # Validar mesa_id
@@ -891,6 +899,7 @@ def marcar_notificacion_leida(notificacion_id):
 
 @app.route('/atender_mesa/<int:mesa_id>', methods=['POST'])
 @login_required
+@role_required(['mesero']) # Restringir a meseros para atender mesas
 def atender_mesa(mesa_id):
     try:
         data = request.get_json()
@@ -2056,6 +2065,64 @@ def procesar_pago_barra():
     except Exception as e:
         print(f"Error en procesar_pago_barra: {str(e)}")
         return jsonify({'success': False, 'message': 'Error al procesar el pago'})
+
+@app.route('/pedidosc')
+@login_required
+@role_required(['admin'])
+def admin_pedidos_en_curso():
+    try:
+        cursor = connection.cursor()
+
+        # Consulta para obtener pedidos pendientes en mesas (y 'Para Llevar')
+        # num_mesa < 15 son mesas, num_mesa = 14 es 'Para Llevar'
+        query = '''
+            SELECT
+                p.id AS pedido_id,
+                f.codigo AS factura_codigo,
+                cl.num_mesa,
+                p.fecha_hora,
+                COALESCE(ue.nombre_user, 'Sin asignar') AS mesero,
+                f.monto AS monto_actual
+            FROM pedidos p
+            JOIN facturas f ON p.codigo_factura = f.codigo
+            JOIN clientes cl ON p.clientes_id = cl.id
+            LEFT JOIN usuario_empleado ue ON p.empleado_id = ue.id
+            WHERE f.estado = 'pendiente' AND cl.num_mesa IS NOT NULL AND cl.num_mesa <= 14
+            ORDER BY cl.num_mesa ASC, p.fecha_hora ASC
+        '''
+
+        cursor.execute(query)
+        pedidos_en_curso = cursor.fetchall()
+
+        pedidos_con_info = []
+        for pedido in pedidos_en_curso:
+            pedido_dict = dict(pedido)
+            # Calcular tiempo transcurrido
+            fecha_hora_pedido = datetime.strptime(pedido['fecha_hora'], '%Y-%m-%d %H:%M:%S')
+            tiempo_transcurrido = datetime.now() - fecha_hora_pedido
+            # Formatear tiempo transcurrido (ej: HH:MM:SS)
+            segundos_totales = int(tiempo_transcurrido.total_seconds())
+            horas = segundos_totales // 3600
+            minutos = (segundos_totales % 3600) // 60
+            segundos = segundos_totales % 60
+            pedido_dict['tiempo_transcurrido'] = f'{horas:02d}:{minutos:02d}:{segundos:02d}'
+
+            # Obtener el nombre de la mesa/ubicación
+            mesa_id = pedido['num_mesa']
+            mesa_info = next((m for m in mesas if m['id'] == mesa_id), None)
+            pedido_dict['nombre_ubicacion'] = mesa_info['nombre'] if mesa_info else f'Mesa {mesa_id}'
+
+            pedidos_con_info.append(pedido_dict)
+
+        return render_template(
+            'admin_pedidos_en_curso.html',
+            pedidos=pedidos_con_info
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error en admin_pedidos_en_curso: {str(e)}")
+        flash("Ocurrió un error al obtener los pedidos en curso", "danger")
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(debug=True)
