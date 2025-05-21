@@ -168,6 +168,15 @@
                 </select>
             </div>
             
+            <div class="col-md-4">
+                <label for="tipo_ubicacion" class="form-label">Ubicación:</label>
+                <select name="tipo_ubicacion" id="tipo_ubicacion" class="form-select">
+                    <option value="">Todas</option>
+                    <option value="mesa" {% if tipo_ubicacion_seleccionado == 'mesa' %}selected{% endif %}>Mesas</option>
+                    <option value="barra" {% if tipo_ubicacion_seleccionado == 'barra' %}selected{% endif %}>Barra</option>
+                </select>
+            </div>
+            
             <div class="col-md-4 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary btn-filter me-2">
                     <i class="bi bi-funnel"></i> Filtrar

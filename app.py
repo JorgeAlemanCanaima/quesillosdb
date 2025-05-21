@@ -561,6 +561,8 @@ def usuarios():
             cursor = connection.cursor()
             cursor.execute("""
                 SELECT * FROM usuario_empleado
+                WHERE nombre_user IS NOT NULL
+                AND nombre_user != ''
             """)
             table = cursor.fetchall()
         except:
@@ -806,9 +808,11 @@ def products():
     try:
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT id, nombre_user 
+            SELECT DISTINCT id, nombre_user, rol 
             FROM usuario_empleado 
             WHERE rol = 'mesero'
+            AND nombre_user IS NOT NULL
+            AND nombre_user != ''
         """)
         meseros = cursor.fetchall()
     except Exception as e:
@@ -1203,18 +1207,19 @@ def facturacion():
         # Obtener parámetros de filtrado
         estado = request.args.get('estado', '').lower()
         rango_fecha = request.args.get('rango_fecha', '').lower()
+        tipo_ubicacion = request.args.get('tipo_ubicacion', '').lower()
         
         cursor = connection.cursor()
 
         # Consulta base para facturas
         query = '''
             SELECT DISTINCT
-                cl.nombre,
+                COALESCE(cl.nombre, 'Cliente Barra') as nombre,
                 f.codigo, 
                 f.monto, 
                 f.estado, 
                 p.fecha_hora, 
-                cl.num_mesa, 
+                COALESCE(cl.num_mesa, 15) as num_mesa, 
                 p.id AS pedido_id,
                 COALESCE(ue.nombre_user, 'Sin asignar') AS mesero,  
                 f.propina,
@@ -1222,7 +1227,7 @@ def facturacion():
                 f.tipo_tarjeta
             FROM facturas f
             JOIN pedidos p ON f.codigo = p.codigo_factura
-            JOIN clientes cl ON p.clientes_id = cl.id
+            LEFT JOIN clientes cl ON p.clientes_id = cl.id
             LEFT JOIN usuario_empleado ue ON p.empleado_id = ue.id AND ue.rol = 'mesero'
         '''
         
@@ -1246,6 +1251,13 @@ def facturacion():
             if fecha_inicio:
                 conditions.append("p.fecha_hora >= datetime(?, 'localtime')")
                 params.append(fecha_inicio.strftime('%Y-%m-%d %H:%M:%S'))
+
+        # Filtro por tipo de ubicación
+        if tipo_ubicacion:
+            if tipo_ubicacion == "mesa":
+                conditions.append("(cl.nombre IS NULL OR cl.nombre != 'Cliente Barra')")
+            elif tipo_ubicacion == "barra":
+                conditions.append("(cl.nombre = 'Cliente Barra' OR cl.nombre IS NULL)")
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
@@ -1279,7 +1291,8 @@ def facturacion():
             'facturacion.html',
             facturas=facturas_con_productos,
             estado_seleccionado=estado,
-            rango_fecha_seleccionado=rango_fecha
+            rango_fecha_seleccionado=rango_fecha,
+            tipo_ubicacion_seleccionado=tipo_ubicacion
         )
 
     except Exception as e:
@@ -1904,6 +1917,145 @@ def marcar_pedido_listo(pedido_id):
     except Exception as e:
         print(f"Error al marcar pedido como listo: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/barra/<int:barra_id>')
+@login_required
+def barra(barra_id):
+    try:
+        # Obtener productos disponibles
+        cursor = connection.cursor()
+        cursor.execute('SELECT id, nombre, precio, categoria, stock FROM productos WHERE stock > 0')
+        productos = cursor.fetchall()
+
+        # Convertir productos a lista de diccionarios
+        productos_list = []
+        for producto in productos:
+            productos_list.append({
+                'id': producto[0],
+                'nombre': producto[1],
+                'precio': float(producto[2]),
+                'categoria': producto[3],
+                'stock': producto[4]
+            })
+
+        return render_template('barra.html', 
+                             barra_id=barra_id,
+                             productos=productos_list)
+    except Exception as e:
+        print(f"Error en barra: {str(e)}")
+        return redirect(url_for('mesas'))
+
+@app.route('/procesar_pago_barra', methods=['POST'])
+@login_required
+def procesar_pago_barra():
+    try:
+        data = request.get_json()
+        barra_id = data.get('barra_id')
+        items = data.get('items', {})
+        tipo_pago = data.get('tipo_pago', 'efectivo')
+        tipo_tarjeta = data.get('tipo_tarjeta') if tipo_pago == 'tarjeta' else None
+        monto_pagado = data.get('monto_pagado')
+
+        if not items:
+            return jsonify({'success': False, 'message': 'No hay items para procesar'})
+
+        cursor = connection.cursor()
+        
+        # Crear cliente para la barra
+        cursor.execute('''
+            INSERT INTO clientes (nombre, num_mesa)
+            VALUES (?, ?)
+        ''', ('Cliente Barra', barra_id))
+        cliente_id = cursor.lastrowid
+        
+        # Crear la orden
+        cursor.execute('''
+            INSERT INTO pedidos (fecha_hora, tipo_pedido, estado, clientes_id)
+            VALUES (datetime('now', 'localtime'), 'local', 'completado', ?)
+        ''', (cliente_id,))
+        pedido_id = cursor.lastrowid
+
+        # Obtener nuevo código de factura
+        cursor.execute("SELECT COALESCE(MAX(codigo), 0) FROM facturas")
+        last_code = cursor.fetchone()[0]
+        new_code = last_code + 1
+
+        subtotal = 0
+        # Procesar cada item
+        for producto_id, cantidad in items.items():
+            # Obtener información del producto
+            cursor.execute('SELECT precio, stock FROM productos WHERE id = ?', (producto_id,))
+            producto = cursor.fetchone()
+            
+            if not producto:
+                continue
+
+            precio, stock = producto
+            subtotal_item = precio * cantidad
+            subtotal += subtotal_item
+
+            # Insertar detalle de la orden
+            cursor.execute('''
+                INSERT INTO pedido_productos (pedido_id, producto_id, cantidad)
+                VALUES (?, ?, ?)
+            ''', (pedido_id, producto_id, cantidad))
+
+            # Actualizar stock
+            nuevo_stock = stock - cantidad
+            cursor.execute('UPDATE productos SET stock = ? WHERE id = ?', (nuevo_stock, producto_id))
+
+        # Crear factura con tipo de pago y tipo de tarjeta
+        cursor.execute('''
+            INSERT INTO facturas (codigo, monto, estado, fecha_creacion, tipo_pago, tipo_tarjeta)
+            VALUES (?, ?, 'pagada', datetime('now', 'localtime'), ?, ?)
+        ''', (new_code, subtotal, tipo_pago, tipo_tarjeta))
+
+        # Actualizar pedido con el código de factura
+        cursor.execute('UPDATE pedidos SET codigo_factura = ? WHERE id = ?', (new_code, pedido_id))
+
+        # Crear notificación
+        hora_actual = datetime.now().strftime('%H:%M')
+        
+        # Obtener nombres de productos
+        productos_info = []
+        for producto_id, cantidad in items.items():
+            cursor.execute('SELECT nombre FROM productos WHERE id = ?', (producto_id,))
+            producto = cursor.fetchone()
+            if producto:
+                productos_info.append({
+                    'nombre': producto[0],
+                    'cantidad': cantidad
+                })
+
+        notificacion = {
+            'id': len(notificaciones_pedidos) + 1,
+            'tipo': 'pedido_completado',
+            'mensaje': f'Pedido #{new_code} - Barra {barra_id} completado',
+            'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'pedido_id': pedido_id,
+            'leida': False,
+            'detalles': {
+                'cliente': 'Cliente Barra',
+                'hora': hora_actual,
+                'total_productos': len(items),
+                'total_monto': subtotal,
+                'productos': productos_info
+            }
+        }
+        notificaciones_pedidos.append(notificacion)
+
+        connection.commit()
+        cursor.close()
+
+        return jsonify({
+            'success': True, 
+            'message': 'Pago procesado correctamente',
+            'factura_id': new_code
+        })
+
+    except Exception as e:
+        print(f"Error en procesar_pago_barra: {str(e)}")
+        return jsonify({'success': False, 'message': 'Error al procesar el pago'})
 
 if __name__ == '__main__':
     app.run(debug=True)
