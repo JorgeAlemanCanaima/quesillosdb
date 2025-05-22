@@ -353,7 +353,6 @@
             </li>
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('admin_pedidos_en_curso') }}" aria-expanded="false">
-
                 <span>
                   <i class="bi bi-cart text-primary fs-6"></i>
                 </span>
@@ -361,6 +360,7 @@
               </a>
             </li>
 
+            {% if session.get('rol') in ['admin', 'cocinero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('cocina_pedidos_pendientes') }}" aria-expanded="false">
                 <span>
@@ -369,6 +369,7 @@
                 <span class="hide-menu">Cocina</span>
               </a>
             </li>
+            {% endif %}
             {% if session.get('rol') in ['admin', 'mesero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('clientes') }}" aria-expanded="false">
