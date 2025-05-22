@@ -16,6 +16,8 @@
     .sidebar-nav {
       max-height: 100vh;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
+      padding-bottom: 100px; /* Espacio extra al final para asegurar que todos los elementos sean accesibles */
     }
 
     /* Estilos para notificaciones */
@@ -58,6 +60,7 @@
     @media (max-width: 991.98px) {
       .sidebar-nav {
         max-height: calc(100vh - 60px);
+        padding-bottom: 150px; /* Más espacio en móviles */
       }
       
       .brand-logo img {
@@ -77,6 +80,7 @@
         box-shadow: 0 0 15px rgba(0,0,0,0.1);
         width: 260px;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
         right: auto;
         will-change: transform;
         display: block;
@@ -87,6 +91,9 @@
         left: 0 !important;
         right: auto !important;
         display: block !important;
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
 
       .mobile-toggle {
