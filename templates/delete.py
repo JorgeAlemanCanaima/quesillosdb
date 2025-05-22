@@ -4,7 +4,11 @@ conn = sqlite3.connect('quesillos.db')
 cur = conn.cursor()
 
 tablas = [
+<<<<<<< HEAD
     'empleados',
+=======
+    'pedido_productos',
+>>>>>>> 15ab887802db774ea3f854708fdd3260228af0fe
     
 ]
 

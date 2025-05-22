@@ -334,16 +334,19 @@ def historial():
         # Órdenes de hoy
         cursor.execute("""
             SELECT COUNT(*) 
-            FROM pedidos 
-            WHERE date(fecha_hora, 'localtime') = date('now', 'localtime')
+            FROM pedidos p
+            JOIN facturas f ON p.codigo_factura = f.codigo
+            WHERE date(p.fecha_hora, 'localtime') = date('now', 'localtime')
+            AND f.estado = 'pagada'
         """)
         ordenes_dia = cursor.fetchone()[0] or 0
 
         # Clientes únicos hoy
         cursor.execute("""
-            SELECT COUNT(DISTINCT clientes_id) 
-            FROM pedidos 
-            WHERE date(fecha_hora, 'localtime') = date('now', 'localtime')
+            SELECT COUNT(DISTINCT c.id) 
+            FROM pedidos p
+            JOIN clientes c ON p.clientes_id = c.id
+            WHERE date(p.fecha_hora, 'localtime') = date('now', 'localtime')
         """)
         clientes_dia = cursor.fetchone()[0] or 0
 

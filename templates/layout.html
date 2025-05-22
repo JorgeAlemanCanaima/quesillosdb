@@ -16,6 +16,8 @@
     .sidebar-nav {
       max-height: 100vh;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
+      padding-bottom: 100px; /* Espacio extra al final para asegurar que todos los elementos sean accesibles */
     }
 
     /* Estilos para notificaciones */
@@ -58,27 +60,105 @@
     @media (max-width: 991.98px) {
       .sidebar-nav {
         max-height: calc(100vh - 60px);
+        padding-bottom: 150px; /* Más espacio en móviles */
       }
       
       .brand-logo img {
-        width: 200px !important;
-        height: 100px !important;
+        width: 150px !important;
+        height: 75px !important;
       }
 
       .left-sidebar {
         position: fixed;
         top: 0;
-        left: -260px;
+        left: 0;
+        transform: translateX(-100%);
         height: 100%;
         z-index: 1030;
-        transition: all 0.3s ease;
+        transition: transform 0.3s ease;
         background-color: #fff;
         box-shadow: 0 0 15px rgba(0,0,0,0.1);
         width: 260px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
+        right: auto;
+        will-change: transform;
+        display: block;
       }
 
       .left-sidebar.show {
+        transform: translateX(0) !important;
+        left: 0 !important;
+        right: auto !important;
+        display: block !important;
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .mobile-toggle {
+        display: block !important;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1031;
+        background: #fff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .mobile-toggle:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      }
+
+      .mobile-toggle i {
+        font-size: 1.2rem;
+        color: #333;
+      }
+
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
         left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1029;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .sidebar-overlay.show {
+        display: block;
+        opacity: 1;
+      }
+
+      .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: transparent;
+        border: none;
+        font-size: 1.2rem;
+        color: #333;
+        cursor: pointer;
+        padding: 5px;
+        transition: all 0.3s ease;
+      }
+
+      .close-btn:hover {
+        transform: rotate(90deg);
+        color: #dc3545;
       }
 
       .body-wrapper {
@@ -132,6 +212,163 @@
 
       .toast-body {
         padding: 0.75rem;
+      }
+    }
+
+    /* Estilos específicos para 394x852 */
+    @media (max-width: 394px) {
+      .brand-logo img {
+        width: 120px !important;
+        height: 60px !important;
+      }
+
+      .mobile-toggle {
+        top: 8px;
+        left: 8px;
+        width: 35px;
+        height: 35px;
+      }
+
+      .mobile-toggle i {
+        font-size: 1rem;
+      }
+
+      .left-sidebar {
+        width: 260px;
+      }
+
+      .sidebar-link {
+        padding: 8px !important;
+        font-size: 14px !important;
+      }
+
+      .sidebar-link i {
+        font-size: 18px !important;
+      }
+
+      .nav-small-cap {
+        font-size: 11px !important;
+        margin-top: 15px !important;
+      }
+
+      .container-fluid {
+        padding: 0.25rem;
+      }
+
+      .card {
+        margin-bottom: 0.75rem;
+      }
+
+      .card-body {
+        padding: 0.75rem;
+      }
+
+      .table th, .table td {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+      }
+
+      .btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+      }
+
+      .form-control {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+      }
+
+      .modal-dialog {
+        margin: 0.25rem;
+      }
+
+      .modal-content {
+        border-radius: 0.5rem;
+      }
+
+      .modal-header {
+        padding: 0.75rem;
+      }
+
+      .modal-body {
+        padding: 0.75rem;
+      }
+
+      .modal-footer {
+        padding: 0.75rem;
+      }
+
+      /* Ajustes para el header */
+      .app-header {
+        padding: 0 10px;
+      }
+
+      .app-header .navbar {
+        min-height: 60px;
+      }
+
+      .app-header .navbar .navbar-nav .nav-item .nav-link {
+        padding: 4px 8px;
+        line-height: 60px;
+        height: 60px;
+        font-size: 18px;
+      }
+
+      /* Ajustes para dropdowns */
+      .dropdown-menu {
+        width: 100%;
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+      }
+
+      .dropdown-item {
+        padding: 0.5rem 0.75rem;
+      }
+
+      /* Ajustes para notificaciones */
+      .toast-container {
+        bottom: 10px;
+        right: 5px;
+        left: 5px;
+      }
+
+      .toast {
+        margin-bottom: 5px;
+      }
+
+      /* Ajustes para el contenido principal */
+      .body-wrapper > .container-fluid {
+        padding: 10px;
+      }
+
+      /* Ajustes para tablas */
+      .table-responsive {
+        margin: 0 -10px;
+        padding: 0 10px;
+      }
+
+      /* Ajustes para formularios */
+      .form-label {
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .input-group {
+        flex-wrap: wrap;
+      }
+
+      .input-group > * {
+        margin-bottom: 0.25rem;
+      }
+
+      /* Ajustes para botones de acción */
+      .btn-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .btn-group .btn {
+        margin-bottom: 0.25rem;
       }
     }
 
@@ -273,43 +510,205 @@
     }
 
     .mobile-toggle {
-      display: none;
+      display: block !important;
     }
 
-    @media (max-width: 991.98px) {
-      .mobile-toggle {
-        display: block;
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        z-index: 1031;
-        background: #fff;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        border: none;
-        cursor: pointer;
+    /* Estilos responsivos generales */
+    @media (min-width: 1400px) {
+      .container-fluid {
+        max-width: 1320px;
+        margin: 0 auto;
       }
 
-      .mobile-toggle i {
-        font-size: 1.2rem;
-        color: #333;
+      .left-sidebar {
+        width: 280px;
       }
 
-      .sidebar-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 1029;
+      .brand-logo img {
+        width: 250px !important;
+        height: 125px !important;
       }
 
-      .sidebar-overlay.show {
-        display: block;
+      .sidebar-link {
+        font-size: 16px !important;
+        padding: 12px !important;
+      }
+
+      .sidebar-link i {
+        font-size: 24px !important;
+      }
+    }
+
+    @media (min-width: 1200px) and (max-width: 1399.98px) {
+      .container-fluid {
+        max-width: 1140px;
+        margin: 0 auto;
+      }
+
+      .left-sidebar {
+        width: 260px;
+      }
+
+      .brand-logo img {
+        width: 220px !important;
+        height: 110px !important;
+      }
+    }
+
+    @media (min-width: 992px) and (max-width: 1199.98px) {
+      .container-fluid {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      .left-sidebar {
+        width: 240px;
+      }
+
+      .brand-logo img {
+        width: 200px !important;
+        height: 100px !important;
+      }
+    }
+
+    @media (min-width: 768px) and (max-width: 991.98px) {
+      .container-fluid {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+
+      .left-sidebar {
+        width: 220px;
+      }
+
+      .brand-logo img {
+        width: 180px !important;
+        height: 90px !important;
+      }
+
+      .sidebar-link {
+        font-size: 15px !important;
+        padding: 10px !important;
+      }
+
+      .sidebar-link i {
+        font-size: 20px !important;
+      }
+    }
+
+    @media (min-width: 576px) and (max-width: 767.98px) {
+      .container-fluid {
+        max-width: 540px;
+        margin: 0 auto;
+      }
+
+      .left-sidebar {
+        width: 200px;
+      }
+
+      .brand-logo img {
+        width: 160px !important;
+        height: 80px !important;
+      }
+
+      .sidebar-link {
+        font-size: 14px !important;
+        padding: 8px !important;
+      }
+
+      .sidebar-link i {
+        font-size: 18px !important;
+      }
+
+      .nav-small-cap {
+        font-size: 12px !important;
+      }
+    }
+
+    @media (min-width: 395px) and (max-width: 575.98px) {
+      .container-fluid {
+        width: 100%;
+        padding: 0.5rem;
+      }
+
+      .left-sidebar {
+        width: 85%;
+        max-width: 280px;
+      }
+
+      .brand-logo img {
+        width: 140px !important;
+        height: 70px !important;
+      }
+
+      .sidebar-link {
+        font-size: 14px !important;
+        padding: 8px !important;
+      }
+
+      .sidebar-link i {
+        font-size: 18px !important;
+      }
+
+      .nav-small-cap {
+        font-size: 11px !important;
+      }
+    }
+
+    /* Estilos para orientación horizontal en móviles */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .left-sidebar {
+        height: 100vh;
+        overflow-y: auto;
+      }
+
+      .brand-logo {
+        padding: 10px;
+      }
+
+      .brand-logo img {
+        width: 100px !important;
+        height: 50px !important;
+      }
+
+      .sidebar-link {
+        padding: 6px !important;
+      }
+
+      .nav-small-cap {
+        margin-top: 10px !important;
+      }
+
+      .app-header .navbar {
+        min-height: 50px;
+      }
+
+      .app-header .navbar .navbar-nav .nav-item .nav-link {
+        line-height: 50px;
+        height: 50px;
+      }
+    }
+
+    /* Estilos para dispositivos táctiles */
+    @media (hover: none) {
+      .sidebar-link:hover {
+        background-color: transparent;
+      }
+
+      .btn:hover {
+        transform: none;
+      }
+
+      .nav-icon-hover:hover {
+        transform: none;
+      }
+
+      .mobile-toggle:hover {
+        transform: none;
+      }
+
+      .close-btn:hover {
+        transform: none;
       }
     }
   </style>
@@ -353,7 +752,6 @@
             </li>
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('admin_pedidos_en_curso') }}" aria-expanded="false">
-
                 <span>
                   <i class="bi bi-cart text-primary fs-6"></i>
                 </span>
@@ -361,6 +759,7 @@
               </a>
             </li>
 
+            {% if session.get('rol') in ['admin', 'cocinero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('cocina_pedidos_pendientes') }}" aria-expanded="false">
                 <span>
@@ -369,6 +768,7 @@
                 <span class="hide-menu">Cocina</span>
               </a>
             </li>
+            {% endif %}
             {% if session.get('rol') in ['admin', 'mesero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('clientes') }}" aria-expanded="false">
@@ -763,9 +1163,6 @@
       
       // Función para mostrar/ocultar el sidebar
       function toggleSidebar() {
-        console.log('Toggle sidebar clicked');
-        
-        // Asegurarse de que el sidebar tenga la clase show
         if (sidebar.classList.contains('show')) {
           sidebar.classList.remove('show');
           overlay.classList.remove('show');
@@ -782,7 +1179,6 @@
         mobileToggle.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Mobile toggle clicked');
           toggleSidebar();
         });
       }
@@ -791,14 +1187,12 @@
         closeBtn.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Close button clicked');
           toggleSidebar();
         });
       }
       
       if (overlay) {
         overlay.addEventListener('click', function() {
-          console.log('Overlay clicked');
           toggleSidebar();
         });
       }
@@ -812,45 +1206,13 @@
           }
         });
       });
-      
-      // Verificar si estamos en un dispositivo móvil
-      function isMobile() {
-        return window.innerWidth < 992;
-      }
-      
-      // Inicializar el sidebar según el tamaño de la pantalla
-      if (isMobile()) {
-        console.log('Mobile device detected');
-        sidebar.classList.remove('show');
-        overlay.classList.remove('show');
-      }
-      
-      // Asegurarse de que el sidebar tenga un ancho definido
-      if (sidebar) {
-        sidebar.style.width = '260px';
-      }
-      
-      // Forzar la visibilidad del sidebar en móvil
-      if (isMobile()) {
-        // Asegurarse de que el sidebar tenga un fondo blanco y sea visible
-        sidebar.style.backgroundColor = '#fff';
-        sidebar.style.boxShadow = '0 0 15px rgba(0,0,0,0.1)';
-        
-        // Asegurarse de que el sidebar tenga un z-index alto
-        sidebar.style.zIndex = '1030';
-        
-        // Asegurarse de que el sidebar tenga un ancho definido
-        sidebar.style.width = '260px';
-        
-        // Asegurarse de que el sidebar tenga una transición suave
-        sidebar.style.transition = 'all 0.3s ease';
-        
-        // Asegurarse de que el sidebar tenga una posición fija
-        sidebar.style.position = 'fixed';
-        sidebar.style.top = '0';
-        sidebar.style.left = '-260px';
-        sidebar.style.height = '100%';
-      }
+
+      // Cerrar sidebar al redimensionar la ventana
+      window.addEventListener('resize', function() {
+        if (window.innerWidth >= 992 && sidebar.classList.contains('show')) {
+          toggleSidebar();
+        }
+      });
     });
   </script>
 
