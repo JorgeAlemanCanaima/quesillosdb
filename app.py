@@ -61,9 +61,6 @@ def run_scheduler():
     """
     schedule.every(8).hours.do(create_backup)
     
-    # Crear una copia de seguridad inicial
-    create_backup()
-    
     while True:
         schedule.run_pending()
         time.sleep(60)
