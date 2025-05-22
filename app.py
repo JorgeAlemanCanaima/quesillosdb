@@ -13,10 +13,64 @@ from flask_mail import Mail, Message
 import pandas as pd
 import io
 from flask import send_file
+import shutil
+from pathlib import Path
+import threading
+import schedule
+import time
 
 
 # Cargar variables de entorno
 load_dotenv()
+
+# Configuración del directorio de respaldos
+BACKUP_DIR = Path('backups')
+BACKUP_DIR.mkdir(exist_ok=True)
+
+def create_backup():
+    """
+    Crea una copia de seguridad de la base de datos
+    """
+    try:
+        # Obtener la fecha y hora actual
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Nombre del archivo de respaldo
+        backup_filename = f'quesillos_backup_{timestamp}.db'
+        backup_path = BACKUP_DIR / backup_filename
+        
+        # Crear la copia de seguridad
+        shutil.copy2('quesillos.db', backup_path)
+        
+        # Mantener solo las últimas 10 copias de seguridad
+        backups = sorted(BACKUP_DIR.glob('quesillos_backup_*.db'))
+        if len(backups) > 10:
+            for old_backup in backups[:-10]:
+                old_backup.unlink()
+        
+        print(f'Copia de seguridad creada exitosamente: {backup_filename}')
+        return True
+        
+    except Exception as e:
+        print(f'Error al crear la copia de seguridad: {str(e)}')
+        return False
+
+def run_scheduler():
+    """
+    Ejecuta el programador de copias de seguridad en segundo plano
+    """
+    schedule.every(8).hours.do(create_backup)
+    
+    # Crear una copia de seguridad inicial
+    create_backup()
+    
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+
+# Iniciar el programador en un hilo separado
+scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+scheduler_thread.start()
 
 app = Flask(__name__)
 
@@ -2129,6 +2183,59 @@ def admin_pedidos_en_curso():
         app.logger.error(f"Error en admin_pedidos_en_curso: {str(e)}")
         flash("Ocurrió un error al obtener los pedidos en curso", "danger")
         return redirect(url_for('index'))
+
+@app.route('/respaldos', methods=['GET'])
+@login_required
+@role_required(['admin'])
+def respaldos():
+    """
+    Muestra la página de respaldos y permite crear respaldos manuales
+    """
+    # Obtener lista de respaldos existentes
+    backups = sorted(BACKUP_DIR.glob('quesillos_backup_*.db'), reverse=True)
+    respaldos_list = []
+    
+    for backup in backups:
+        # Obtener información del archivo
+        stats = backup.stat()
+        respaldos_list.append({
+            'nombre': backup.name,
+            'fecha': datetime.fromtimestamp(stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+            'tamano': f"{stats.st_size / 1024:.1f} KB"
+        })
+    
+    return render_template('respaldos.html', respaldos=respaldos_list)
+
+@app.route('/crear_respaldo', methods=['POST'])
+@login_required
+@role_required(['admin'])
+def crear_respaldo():
+    """
+    Crea un respaldo manual de la base de datos
+    """
+    if create_backup():
+        flash('Respaldo creado exitosamente', 'success')
+    else:
+        flash('Error al crear el respaldo', 'error')
+    
+    return redirect(url_for('respaldos'))
+
+@app.route('/descargar_respaldo/<nombre>')
+@login_required
+@role_required(['admin'])
+def descargar_respaldo(nombre):
+    """
+    Permite descargar un respaldo específico
+    """
+    backup_path = BACKUP_DIR / nombre
+    if backup_path.exists():
+        return send_file(
+            backup_path,
+            as_attachment=True,
+            download_name=nombre
+        )
+    flash('Respaldo no encontrado', 'error')
+    return redirect(url_for('respaldos'))
 
 if __name__ == '__main__':
     app.run(debug=True)
