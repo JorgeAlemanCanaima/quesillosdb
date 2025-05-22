@@ -4,7 +4,7 @@ conn = sqlite3.connect('quesillos.db')
 cur = conn.cursor()
 
 tablas = [
-    'facturas',
+    'pedido_productos',
     
 ]
 

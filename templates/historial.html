@@ -250,7 +250,7 @@
                         </div>
                         <i class="bi bi-cart-check text-success fs-4"></i>
                     </div>
-                    <small class="text-muted">Promedio: {{ (ordenes_dia/12)|round(1) }} por hora</small>
+                    <small class="text-muted">Promedio: {{ (ordenes_dia/24)|round(1) if ordenes_dia > 0 else 0 }} por hora</small>
                 </div>
             </div>
             <div class="col-md-3">
@@ -264,7 +264,7 @@
                             <i class="bi bi-people text-info fs-4"></i>
                         </div>
                         <small class="text-muted">
-                            {% if ordenes_dia > 0 %}
+                            {% if ordenes_dia > 0 and clientes_dia > 0 %}
                                 {{ ((clientes_dia / ordenes_dia) * 100) | round(1) }}% recurrentes
                             {% else %}
                                 0% recurrentes
@@ -283,7 +283,7 @@
                             </div>
                             <i class="bi bi-currency-dollar text-warning fs-4"></i>
                         </div>
-                        <small class="text-muted">Promedio mensual: C${{ (ventas_totales/12)|round(2) }}</small>
+                        <small class="text-muted">Promedio mensual: C${{ (ventas_totales/12)|round(2) if ventas_totales > 0 else 0 }}</small>
                     </div>
                 </a>
             </div>
@@ -324,7 +324,7 @@
                         <div class="col-md-4">
                             <div class="border rounded p-3 bg-light">
                                 <h6 class="metric-label">Promedio Diario</h6>
-                                <h3 class="metric-value text-primary">C${{ (propinas_mes/30)|round(2) }}</h3>
+                                <h3 class="metric-value text-primary">C${{ (propinas_mes/30)|round(2) if propinas_mes > 0 else 0 }}</h3>
                                 <div class="progress mt-2">
                                     <div class="progress-bar bg-primary" style="width: 60%"></div>
                                 </div>
@@ -375,7 +375,7 @@
                                 <tr>
                                     <td>{{ meses[i] }}</td>
                                     <td class="text-end">C${{ ventas_mensuales[i] if i < ventas_mensuales|length else 0 }}</td>
-                                    <td class="text-end">{{ ((ventas_mensuales[i]/ventas_totales)*100)|round(1) if i < ventas_mensuales|length else 0 }}%</td>
+                                    <td class="text-end">{{ ((ventas_mensuales[i]/ventas_totales)*100)|round(1) if ventas_totales > 0 and i < ventas_mensuales|length else 0 }}%</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
