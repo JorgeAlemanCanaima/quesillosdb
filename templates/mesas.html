@@ -11,6 +11,7 @@
         padding: 2rem;
         background-color: #f9f5f0;
         min-height: calc(100vh - 60px);
+        animation: fadeIn 0.8s ease-out;
     }
     
     .mesas-title {
@@ -63,6 +64,7 @@
         position: relative;
         overflow: hidden;
         border: 1px solid rgba(141, 110, 99, 0.1);
+        animation: slideUp 0.6s ease-out backwards;
     }
     
     .mesa-card:before {
@@ -581,7 +583,106 @@
     .section-container.barra {
         background: rgba(44, 62, 80, 0.05);
     }
+
+    /* Animaciones */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mesasContainer = document.querySelector('.mesas-container');
+        const btnEditConfig = document.getElementById('btnEditConfig');
+        const mesasConfigForm = document.getElementById('mesasConfigForm');
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            mesasContainer.classList.toggle('sidebar-active');
+        }
+
+        btnEditConfig.addEventListener('click', function() {
+            toggleSidebar();
+        });
+
+        mesasConfigForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const numMesas = parseInt(document.getElementById('numMesas').value);
+            const numBarra = parseInt(document.getElementById('numBarra').value);
+            
+            // Ocultar todas las mesas primero
+            document.querySelectorAll('.mesa-item').forEach(item => {
+                item.style.display = 'none';
+            });
+
+            // Mostrar mesas para llevar
+            document.querySelectorAll('.mesa-item:not(.barra-item)').forEach((item, index) => {
+                const mesaNum = parseInt(item.dataset.mesaNum);
+                item.style.display = mesaNum <= numMesas ? 'block' : 'none';
+            });
+
+            // Mostrar puestos de barra
+            document.querySelectorAll('.barra-item').forEach((item, index) => {
+                const barraNum = parseInt(item.dataset.barraNum);
+                item.style.display = barraNum <= numBarra ? 'block' : 'none';
+            });
+
+            // Guardar la configuración
+            localStorage.setItem('numMesasHabilitadas', numMesas);
+            localStorage.setItem('numBarraHabilitada', numBarra);
+            
+            toggleSidebar();
+        });
+
+        // Recuperar configuración guardada
+        const numMesasGuardadas = localStorage.getItem('numMesasHabilitadas');
+        const numBarraGuardada = localStorage.getItem('numBarraHabilitada');
+        
+        if (numMesasGuardadas) {
+            document.getElementById('numMesas').value = numMesasGuardadas;
+            document.querySelectorAll('.mesa-item:not(.barra-item)').forEach((item, index) => {
+                const mesaNum = parseInt(item.dataset.mesaNum);
+                item.style.display = mesaNum <= numMesasGuardadas ? 'block' : 'none';
+            });
+        }
+        
+        if (numBarraGuardada) {
+            document.getElementById('numBarra').value = numBarraGuardada;
+            document.querySelectorAll('.barra-item').forEach((item, index) => {
+                const barraNum = parseInt(item.dataset.barraNum);
+                item.style.display = barraNum <= numBarraGuardada ? 'block' : 'none';
+            });
+        } else {
+            toggleSidebar();
+        }
+
+        // Remover el overlay de transición si existe
+        const overlay = document.querySelector('.transition-overlay');
+        if (overlay) {
+            overlay.style.animation = 'overlayFadeOut 0.5s ease-out forwards';
+            setTimeout(() => overlay.remove(), 500);
+        }
+    });
+</script>
 {% endblock %}
 
 {% block main %}
@@ -701,73 +802,4 @@
       </div>
     </div>
   </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebar = document.getElementById('sidebar');
-        const mesasContainer = document.querySelector('.mesas-container');
-        const btnEditConfig = document.getElementById('btnEditConfig');
-        const mesasConfigForm = document.getElementById('mesasConfigForm');
-        
-        function toggleSidebar() {
-            sidebar.classList.toggle('active');
-            mesasContainer.classList.toggle('sidebar-active');
-        }
-
-        btnEditConfig.addEventListener('click', function() {
-            toggleSidebar();
-        });
-
-        mesasConfigForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const numMesas = parseInt(document.getElementById('numMesas').value);
-            const numBarra = parseInt(document.getElementById('numBarra').value);
-            
-            // Ocultar todas las mesas primero
-            document.querySelectorAll('.mesa-item').forEach(item => {
-                item.style.display = 'none';
-            });
-
-            // Mostrar mesas para llevar
-            document.querySelectorAll('.mesa-item:not(.barra-item)').forEach((item, index) => {
-                const mesaNum = parseInt(item.dataset.mesaNum);
-                item.style.display = mesaNum <= numMesas ? 'block' : 'none';
-            });
-
-            // Mostrar puestos de barra
-            document.querySelectorAll('.barra-item').forEach((item, index) => {
-                const barraNum = parseInt(item.dataset.barraNum);
-                item.style.display = barraNum <= numBarra ? 'block' : 'none';
-            });
-
-            // Guardar la configuración
-            localStorage.setItem('numMesasHabilitadas', numMesas);
-            localStorage.setItem('numBarraHabilitada', numBarra);
-            
-            toggleSidebar();
-        });
-
-        // Recuperar configuración guardada
-        const numMesasGuardadas = localStorage.getItem('numMesasHabilitadas');
-        const numBarraGuardada = localStorage.getItem('numBarraHabilitada');
-        
-        if (numMesasGuardadas) {
-            document.getElementById('numMesas').value = numMesasGuardadas;
-            document.querySelectorAll('.mesa-item:not(.barra-item)').forEach((item, index) => {
-                const mesaNum = parseInt(item.dataset.mesaNum);
-                item.style.display = mesaNum <= numMesasGuardadas ? 'block' : 'none';
-            });
-        }
-        
-        if (numBarraGuardada) {
-            document.getElementById('numBarra').value = numBarraGuardada;
-            document.querySelectorAll('.barra-item').forEach((item, index) => {
-                const barraNum = parseInt(item.dataset.barraNum);
-                item.style.display = barraNum <= numBarraGuardada ? 'block' : 'none';
-            });
-        } else {
-            toggleSidebar();
-        }
-    });
-  </script>
 {% endblock %}

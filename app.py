@@ -607,38 +607,40 @@ def change_password():
 # Ruta para la página de inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    session.clear()
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
 
         if not username or not password:
-            return redirect(url_for('login', error='empty'))
+            flash('Por favor complete todos los campos', 'error')
+            return redirect(url_for('login'))
 
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                SELECT * FROM usuario_empleado WHERE nombre_user = ? AND contra_user = ?
+                SELECT id, nombre_user, rol 
+                FROM usuario_empleado 
+                WHERE nombre_user = ? AND contra_user = ?
+                LIMIT 1
             """, (username, password))
             user = cursor.fetchone()
             
             if not user:
-                return redirect(url_for('login', error='invalid'))
+                flash('Usuario o contraseña incorrectos', 'error')
+                return redirect(url_for('login'))
 
-            session['user_id'] = user[0]
-            session['username'] = username
+            session['user_id'] = user['id']
+            session['username'] = user['nombre_user']
             session['rol'] = user['rol']
-            print("Sesión iniciada correctamente")
-            print("User ID guardado en la sesión:", session.get('user_id'))
-            print("Rol guardado en la sesión:", session.get('rol'))
 
-            # Redirigir según el rol
             if user['rol'] == 'admin':
                 return redirect(url_for('admin_pedidos_en_curso'))
             return redirect(url_for('mesas1'))
+            
         except Exception as e:
-            print(f"Error en la consulta: {e}")
-            return redirect(url_for('login', error='server'))
+            print(f"Error en login: {e}")
+            flash('Error al iniciar sesión', 'error')
+            return redirect(url_for('login'))
     
     return render_template('login.html')
 
@@ -2095,11 +2097,18 @@ def procesar_pago_barra():
         barra_id = data.get('barra_id')
         items = data.get('items', {})
         tipo_pago = data.get('tipo_pago', 'efectivo')
-        tipo_tarjeta = data.get('tipo_tarjeta') if tipo_pago == 'tarjeta' else None
+        tipo_tarjeta = data.get('tipo_tarjeta')
         monto_pagado = data.get('monto_pagado')
 
         if not items:
             return jsonify({'success': False, 'message': 'No hay items para procesar'})
+
+        # Validar tipo de pago y tarjeta
+        if tipo_pago == 'tarjeta' and not tipo_tarjeta:
+            return jsonify({'success': False, 'message': 'Debe seleccionar un tipo de tarjeta'})
+        
+        if tipo_pago == 'efectivo' and (not monto_pagado or float(monto_pagado) <= 0):
+            return jsonify({'success': False, 'message': 'Debe ingresar un monto válido'})
 
         cursor = connection.cursor()
         
@@ -2197,7 +2206,7 @@ def procesar_pago_barra():
 
     except Exception as e:
         print(f"Error en procesar_pago_barra: {str(e)}")
-        return jsonify({'success': False, 'message': 'Error al procesar el pago'})
+        return jsonify({'success': False, 'message': f'Error al procesar el pago: {str(e)}'})
 
 @app.route('/pedidosc')
 @login_required

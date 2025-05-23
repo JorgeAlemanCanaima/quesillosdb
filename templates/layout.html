@@ -753,7 +753,7 @@
 
             {% if session.get('rol') != 'cocinero' %}
             <li class="sidebar-item">
-              <a class="sidebar-link" href="{{ url_for('mesas1') }}" aria-expanded="false">
+              <a class="sidebar-link" href="{{ url_for('admin_pedidos_en_curso') if session.get('rol') == 'admin' else url_for('mesas1') }}" aria-expanded="false">
                 <span>
                   <i class="ti ti-shopping-cart"></i>
                 </span>
