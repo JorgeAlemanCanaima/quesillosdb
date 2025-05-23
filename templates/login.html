@@ -3,120 +3,132 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Quesillos</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="../static/css/login.css">
-</head>
-<body>
-  <div class="login-container">
-    <div class="login-image">
-      <div class="login-image-content">
-        <h2>Bienvenido a Quesillos</h2>
-        <p>Los mejores platillos de la ciudad</p>
-      </div>
-    </div>
-
-    <div class="login-form">
-      <div class="text-center mb-4">
-        <img src="../static/images/logos/logo.ico" alt="Logo Quesillos" class="logo-img mb-3" style="width: 120px; height: auto;">
-        <h3 class="text-primary mb-2">Bienvenido al Sistema</h3>
-        <p class="text-muted">Ingresa tus credenciales para continuar</p>
-      </div>
-
-      <form method="POST" action="/login" id="loginForm">
-        <div class="mb-4">
-          <label for="username" class="form-label">
-            <i class="bi bi-person me-2"></i>Usuario
-          </label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-person"></i></span>
-            <input name="username" type="text" class="form-control" id="username" 
-                   placeholder="Ingresa tu usuario" required 
-                   autocomplete="username">
-          </div>
-        </div>
-
-        <div class="mb-4">
-          <label for="password" class="form-label">
-            <i class="bi bi-lock me-2"></i>Contraseña
-          </label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-lock"></i></span>
-            <input name="password" type="password" class="form-control" id="password" 
-                   placeholder="Ingresa tu contraseña" required 
-                   autocomplete="current-password">
-            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
-              <i class="bi bi-eye"></i>
-            </button>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-danger w-100 mb-4">
-          <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
-        </button>
-
-        <div class="text-center">
-          <a href="/forgot-password" class="text-decoration-none text-primary">
-            <i class="bi bi-question-circle me-1"></i>¿Olvidaste tu contraseña?
-          </a>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="modal fade" id="errorModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">
-            <i class="bi bi-exclamation-triangle me-2"></i>Error de Autenticación
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <i class="bi bi-x-circle text-danger display-4 mb-3"></i>
-          <h4 class="mb-3">Credenciales Incorrectas</h4>
-          <p class="text-muted">El usuario o contraseña ingresados no son correctos.</p>
-          <button type="button" class="btn btn-danger mt-3" data-bs-dismiss="modal">
-            <i class="bi bi-arrow-counterclockwise me-2"></i>Intentar de nuevo
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    function togglePassword() {
-      const pwd = document.getElementById('password');
-      const icon = document.querySelector('.toggle-password i');
-      pwd.type = pwd.type === 'password' ? 'text' : 'password';
-      icon.classList.toggle('bi-eye');
-      icon.classList.toggle('bi-eye-slash');
+  <title>Login - Quesillos Lo Nuestro</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-image: url('static/images/logos/frente.jpg'); /* ← Reemplaza esta ruta por tu imagen */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    // Mostrar el modal si hay un mensaje de error en la URL
-    if (window.location.search.includes('error')) {
-      const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-      const errorType = new URLSearchParams(window.location.search).get('error');
-      let errorMessage = 'Credenciales Incorrectas';
-      let errorDescription = 'El usuario o contraseña ingresados no son correctos.';
+    .login-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(5px);
+      border-radius: 15px;
+      padding: 2.5rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+    }
 
-      switch(errorType) {
-        case 'empty':
-          errorMessage = 'Campos Vacíos';
-          errorDescription = 'Por favor, completa todos los campos.';
-          break;
-        case 'system':
-          errorMessage = 'Error del Sistema';
-          errorDescription = 'Ha ocurrido un error. Por favor, intenta nuevamente.';
-          break;
+    .btn-danger {
+      transition: 0.3s ease-in-out;
+    }
+
+    .btn-danger:hover {
+      background-color: #c0392b !important;
+      transform: scale(1.02);
+    }
+
+    .form-control:focus {
+      box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+      border-color: #dc3545;
+    }
+
+    .logo-img img {
+      max-width: 150px;
+      margin-bottom: 15px;
+    }
+
+    .alert {
+      display: none;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 576px) {
+      .login-container {
+        padding: 1.5rem;
       }
 
-      document.querySelector('#errorModal .modal-title').textContent = errorMessage;
-      document.querySelector('#errorModal .modal-body p').textContent = errorDescription;
-      errorModal.show();
+      .logo-img img {
+        max-width: 120px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container text-center">
+    <!-- Logo -->
+    <a class="logo-img d-block mx-auto">
+      <img src="../static/images/logos/logo.ico" alt="Logo Quesillos">
+    </a>
+
+    <!-- Subtítulo -->
+    <p class="fs-5 fw-semibold text-muted mb-4">¡Los mejores platillos!</p>
+
+    <!-- Alerta de Error -->
+    <div class="alert alert-danger" role="alert" id="errorAlert">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      <span id="errorMessage"></span>
+    </div>
+
+    <!-- Formulario -->
+    <form method="POST" action="/login" id="loginForm">
+      <!-- Usuario -->
+      <div class="mb-3 text-start">
+        <label for="username" class="form-label fs-6">Usuario</label>
+        <input name="username" type="text" class="form-control shadow-sm" id="username" required>
+      </div>
+
+      <!-- Contraseña -->
+      <div class="mb-3 text-start">
+        <label for="password" class="form-label fs-6">Contraseña</label>
+        <input name="password" type="password" class="form-control shadow-sm" id="password" required>
+      </div>
+
+      <!-- Recordar -->
+      <div class="mb-3 form-check text-start">
+        <input type="checkbox" class="form-check-input" id="remember">
+        <label class="form-check-label" for="remember">Recordar en este dispositivo</label>
+      </div>
+
+      <!-- Botón -->
+      <button type="submit" class="btn btn-danger w-100 py-2 fs-5 shadow-sm">Iniciar Sesión</button>
+    </form>
+
+    <!-- Recuperación -->
+    <div class="text-center mt-3">
+      <a href="/forgot-password" class="text-decoration-none text-primary">¿Olvidaste tu contraseña?</a>
+    </div>
+  </div>
+
+  <script>
+    // Mostrar error si existe en la URL
+    if (window.location.search.includes('error')) {
+      const errorType = new URLSearchParams(window.location.search).get('error');
+      const errorAlert = document.getElementById('errorAlert');
+      const errorMessage = document.getElementById('errorMessage');
+      
+      let message = 'Credenciales Incorrectas';
+      switch(errorType) {
+        case 'empty':
+          message = 'Por favor, completa todos los campos';
+          break;
+        case 'system':
+          message = 'Ha ocurrido un error. Por favor, intenta nuevamente';
+          break;
+      }
+      
+      errorMessage.textContent = message;
+      errorAlert.style.display = 'block';
     }
 
     // Validación del formulario
@@ -126,10 +138,10 @@
       
       if (!username || !password) {
         e.preventDefault();
-        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-        document.querySelector('#errorModal .modal-title').textContent = 'Campos Vacíos';
-        document.querySelector('#errorModal .modal-body p').textContent = 'Por favor, completa todos los campos.';
-        errorModal.show();
+        const errorAlert = document.getElementById('errorAlert');
+        const errorMessage = document.getElementById('errorMessage');
+        errorMessage.textContent = 'Por favor, completa todos los campos';
+        errorAlert.style.display = 'block';
       }
     });
   </script>
