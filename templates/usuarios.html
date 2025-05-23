@@ -5,64 +5,92 @@
 {% endblock %}
 
 {% block main %}
-<div class="contenedor">
-  <div class="card">
+<div class="container py-4">
+
+  {# Mensajes flash #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card mb-4 shadow-sm">
     <div class="card-body">
-        <h4 class="card-title">Registrar un nuevo usuario</h4>
-        <form action="/usuarios" method="post">
-            <div class="row">
-                <div class="col-lg-4 mb-3">
-                    <label for="input1" class="form-label">Usuario</label>
-                    <input name="usuario" type="text" class="form-control" id="input1" placeholder="Usuario">
-                </div>
-                <div class="col-lg-4 mb-3">
-                    <label for="input1" class="form-label">Roles</label>
-                    <input name="roles" type="text" class="form-control" id="input2" placeholder="Roles">
-                </div>
-                <div class="col-lg-4 mb-3">
-                    <label for="input1" class="form-label">Contraseña</label>
-                    <input name="password" type="password" class="form-control" id="input3" placeholder="Al menos 6 caracteres" required maxlength="6">
-                </div>
-                <div class="col-lg-3 mb-3">
-                    <button class="btn btn-primary w-100 py-8 fs-4 mb-4" type="submit">Registrar</button>
-                </div>
+      <h4 class="card-title mb-4">Registrar un nuevo usuario</h4>
+      <form action="/usuarios" method="post" id="registroForm" novalidate>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input name="usuario" type="text" class="form-control" id="usuario" placeholder="Usuario" required>
+              <label for="usuario">Usuario</label>
+              <div class="invalid-feedback">Ingrese un nombre de usuario.</div>
             </div>
-
-        </form>
-    </div>
-
-
-
-  </div>
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Usuarios</h5>
-      <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col">ID</th>
-                    <th scope="col">Usuario</th>
-                    <th scope="col">Rol</th>
-                    <th scope="col">Email</th>
-                    <th scope="col">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for i in info %}
-                <tr>
-                    <td>{{ i['id'] }}</td>
-                    <td>{{ i['nombre_user'] }}</td>
-                    <td>{{ i['rol'] }}</td>
-                    <td>{{ i['email'] }}</td>
-                    <td>
-                        <button class="btn btn-danger btn-sm" onclick="eliminarUsuario({{ i['id'] }})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </td>
-                </tr>
+          </div>
+          <div class="col-md-4">
+            <div class="form-floating">
+              <select name="rol" class="form-select" id="rol" required>
+                <option value="" disabled selected>Seleccione un rol</option>
+                {% for rol in roles %}
+                <option value="{{ rol.id }}">{{ rol.nombre }}</option>
                 {% endfor %}
-            </tbody>
+              </select>
+              <label for="rol">Rol</label>
+              <div class="invalid-feedback">Seleccione un rol válido.</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input name="password" type="password" class="form-control" id="password" placeholder="Contraseña" required maxlength="6">
+              <label for="password">Contraseña</label>
+              <div class="invalid-feedback">La contraseña debe tener al menos 6 caracteres.</div>
+            </div>
+          </div>
+          <div class="col-12 text-end">
+            <button class="btn btn-primary px-4" type="submit">Registrar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Usuarios registrados</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle text-center">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Email</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for i in info %}
+            <tr>
+              <td>{{ i.id }}</td>
+              <td>{{ i.nombre_user }}</td>
+              <td>
+                <span class="badge bg-{{ 'success' if i.rol == 'admin' else 'info' if i.rol == 'mesero' else 'warning text-dark' }}">
+                  {{ i.rol|title }}
+                </span>
+              </td>
+              <td>{{ i.email or 'No especificado' }}</td>
+              <td>
+                <button class="btn btn-sm btn-danger" onclick="eliminarUsuario({{ i.id }})">
+                  <i class="bi bi-trash"></i> Eliminar
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
       </div>
     </div>
@@ -70,39 +98,47 @@
 </div>
 
 <script>
-function validatePassword(password) {
-    const minLength = 6;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
-    if (password.length < minLength) {
-        return "La contraseña debe tener al menos 6 caracteres";
-    }
-    if (!hasUpperCase) {
-        return "La contraseña debe contener al menos una mayúscula";
-    }
-    if (!hasLowerCase) {
-        return "La contraseña debe contener al menos una minúscula";
-    }
-    if (!hasNumbers) {
-        return "La contraseña debe contener al menos un número";
-    }
-    if (!hasSpecialChar) {
-        return "La contraseña debe contener al menos un carácter especial";
-    }
-    return "";
-}
-
-document.querySelector('form').addEventListener('submit', function(e) {
+  // Validación de contraseña y campos vacíos
+  document.getElementById('registroForm').addEventListener('submit', function (e) {
+    const form = this;
     const password = document.getElementById('password').value;
-    const error = validatePassword(password);
-    
-    if (error) {
-        e.preventDefault();
-        alert(error);
+    const rol = document.getElementById('rol').value;
+
+    if (!form.checkValidity()) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-});
+
+    if (password.length < 6) {
+      document.getElementById('password').classList.add('is-invalid');
+      e.preventDefault();
+    } else {
+      document.getElementById('password').classList.remove('is-invalid');
+    }
+
+    form.classList.add('was-validated');
+  });
+
+  // Eliminar usuario con fetch
+  function eliminarUsuario(id) {
+    if (confirm('¿Está seguro de que desea eliminar este usuario?')) {
+      fetch(`/usuarios/eliminar/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert(data.message || 'Error al eliminar el usuario');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Error al eliminar el usuario. Intente de nuevo.');
+      });
+    }
+  }
 </script>
 {% endblock %}

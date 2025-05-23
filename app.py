@@ -720,29 +720,54 @@ def index():
 @login_required
 @role_required(['admin'])  # Solo administradores pueden acceder
 def usuarios():
+    # Lista predefinida de roles disponibles
+    roles_disponibles = [
+        {'id': 'admin', 'nombre': 'Administrador'},
+        {'id': 'mesero', 'nombre': 'Mesero'},
+        {'id': 'cocinero', 'nombre': 'Cocinero'}
+    ]
+
     if request.method == 'POST':
-        user = request.form['usuario']
-        password = request.form['password'].lower()  
-        rol = request.form.get('rol', 'mesero')
-        
-        if len(password) < 6:
-            flash("La contraseña debe tener al menos 6 caracteres", "error")
-            return redirect(url_for('usuarios'))
-            
         try:
+            user = request.form.get('usuario', '').strip()
+            password = request.form.get('password', '').strip().lower()
+            rol = request.form.get('rol', '').strip()
+            
+            # Validaciones
+            if not user or not password or not rol:
+                flash("Todos los campos son obligatorios", "error")
+                return redirect(url_for('usuarios'))
+            
+            # Validar que el rol seleccionado esté en la lista de roles disponibles
+            if not any(r['id'] == rol for r in roles_disponibles):
+                flash("Rol no válido", "error")
+                return redirect(url_for('usuarios'))
+            
+            if len(password) < 6:
+                flash("La contraseña debe tener al menos 6 caracteres", "error")
+                return redirect(url_for('usuarios'))
+                
+            # Verificar si el usuario ya existe
+            cursor = connection.cursor()
+            cursor.execute("SELECT id FROM usuario_empleado WHERE nombre_user = ?", (user,))
+            if cursor.fetchone():
+                flash("El nombre de usuario ya existe", "error")
+                return redirect(url_for('usuarios'))
+            
             # Hashear la contraseña antes de guardarla
             hashed_password = hash_password(password)
-            cursor = connection.cursor()
             cursor.execute("""
                 INSERT INTO usuario_empleado (nombre_user, contra_user, rol) 
                 VALUES (?, ?, ?)
             """, (user, hashed_password.decode('utf-8'), rol))
             connection.commit()
-            flash("Usuario creado correctamente")
+            
+            flash("Usuario creado correctamente", "success")
             return redirect(url_for('usuarios'))
+            
         except Exception as e:
             print(f"Error al crear usuario: {e}")
-            flash("No se pudo crear el usuario")
+            flash("No se pudo crear el usuario", "error")
             return redirect(url_for('usuarios'))
     else:
         try:
@@ -757,8 +782,21 @@ def usuarios():
         except Exception as e:
             print(f"Error al obtener usuarios: {e}")
             table = []
-        return render_template("usuarios.html", info=table)
-    
+        return render_template("usuarios.html", info=table, roles=roles_disponibles)
+
+@app.route('/usuarios/eliminar/<int:id>', methods=['DELETE'])
+@login_required
+@role_required(['admin'])
+def eliminar_usuario(id):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM usuario_empleado WHERE id = ?", (id,))
+        connection.commit()
+        return jsonify({'success': True, 'message': 'Usuario eliminado correctamente'})
+    except Exception as e:
+        print(f"Error al eliminar usuario: {e}")
+        return jsonify({'success': False, 'message': 'Error al eliminar el usuario'}), 500
+
 #ruta para el ingreso de productos
 @app.route('/ingresoproducto', methods=['GET', 'POST'])
 @login_required
