@@ -18,6 +18,9 @@ from pathlib import Path
 import threading
 import schedule
 import time
+from flask_caching import Cache
+from collections import deque
+from threading import Lock
 
 
 # Cargar variables de entorno
@@ -120,17 +123,54 @@ def number_format(value, decimals=0):
     return txt.replace(",", "X").replace(".", ",").replace("X", ".")
 
 @app.template_filter('datetimeformat')
-def datetimeformat(value):
-    if value:
-        return value.strftime('%d/%m/%Y %H:%M')
-    return ''
+def datetimeformat(value, format='%d/%m/%Y %H:%M'):
+    if not value:
+        return ''
+    
+    if isinstance(value, str):
+        try:
+            value = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            try:
+                value = datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
+            except ValueError:
+                return value
+    
+    return value.strftime(format)
 
 app.secret_key = 'tu_clave_secreta'  # Cambia esto por una clave segura en producción
 
 # Configuración de sesión
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
-Session(app)
+app.config["SESSION_FILE_DIR"] = "flask_session"
+app.config["SESSION_FILE_THRESHOLD"] = 500  # Número máximo de sesiones
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)  # Duración de la sesión
+app.config["SESSION_COOKIE_SECURE"] = True  # Solo HTTPS
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # Prevenir acceso JavaScript
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Protección CSRF
+
+# Configuración de caché
+cache = Cache(app, config={
+    'CACHE_TYPE': 'filesystem',
+    'CACHE_DIR': 'flask_cache',
+    'CACHE_DEFAULT_TIMEOUT': 300  # 5 minutos
+})
+
+# Decorador para cachear rutas
+def cache_route(timeout=300):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            cache_key = f"{request.path}:{request.query_string.decode()}"
+            rv = cache.get(cache_key)
+            if rv is not None:
+                return rv
+            rv = f(*args, **kwargs)
+            cache.set(cache_key, rv, timeout=timeout)
+            return rv
+        return decorated_function
+    return decorator
 
 # Configuración de la base de datos
 database_path = "quesillos.db"
@@ -139,6 +179,25 @@ connection.row_factory = sqlite3.Row
 
 # Configurar la zona horaria de Nicaragua (UTC-6)
 connection.execute("PRAGMA timezone = '-06:00'")
+
+# Optimizaciones de SQLite
+connection.execute("PRAGMA journal_mode = WAL")  # Mejor rendimiento en escrituras
+connection.execute("PRAGMA synchronous = NORMAL")  # Balance entre rendimiento y seguridad
+connection.execute("PRAGMA cache_size = -2000")  # 2MB de caché
+connection.execute("PRAGMA temp_store = MEMORY")  # Almacenamiento temporal en memoria
+
+# Crear índices para mejorar el rendimiento de las consultas
+try:
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_facturas_estado ON facturas(estado)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_pedidos_fecha ON pedidos(fecha_hora)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos(categoria)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_usuario_empleado_rol ON usuario_empleado(rol)")
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_movimientos_caja_fecha ON movimientos_caja(fecha)")
+    connection.commit()
+except sqlite3.OperationalError:
+    # Los índices ya existen, no hacer nada
+    pass
 
 # Asegurar que la tabla pedidos tenga la columna estado
 try:
@@ -675,16 +734,19 @@ def ingresoproducto():
 @app.route('/catalogoproductos', methods=['GET', 'POST'])
 @login_required
 @role_required(['admin', 'mesero'])  # Permitir acceso a admin y mesero
+@cache_route(timeout=300)  # Cachear por 5 minutos
 def catalogoproductos():
     try:
         cursor = connection.cursor()
         cursor.execute("""
             SELECT * FROM productos
+            ORDER BY categoria, nombre
         """)
         table = cursor.fetchall()
-    except:
-        print("Error no se pudieron extraer los datos de la base de datos")
-    return render_template("catalogoproductos.html", info=table)
+        return render_template("catalogoproductos.html", info=table)
+    except Exception as e:
+        flash(f"Error al cargar productos: {str(e)}", "danger")
+        return render_template("catalogoproductos.html", info=[])
 
 
 
@@ -935,36 +997,43 @@ def get_products(categoryName):
     print(product_list)
     return jsonify(product_list)
 
-# Lista global para almacenar las notificaciones
-notificaciones_pedidos = []
+# Estructura optimizada para notificaciones
+from collections import deque
+from threading import Lock
+
+# Cola circular con tamaño máximo para notificaciones
+MAX_NOTIFICACIONES = 100
+notificaciones_pedidos = deque(maxlen=MAX_NOTIFICACIONES)
+notificaciones_lock = Lock()
+
+def agregar_notificacion(notificacion):
+    with notificaciones_lock:
+        notificacion['id'] = len(notificaciones_pedidos) + 1
+        notificaciones_pedidos.append(notificacion)
+
+def obtener_notificaciones_no_leidas():
+    with notificaciones_lock:
+        return [n for n in notificaciones_pedidos if not n.get('leida', False)]
 
 @app.route('/notificaciones')
 @login_required
-@role_required(['admin', 'mesero'])  # Permitir acceso a admin y meseros
+@role_required(['admin', 'mesero'])
+@cache_route(timeout=30)  # Cachear por 30 segundos
 def obtener_notificaciones():
-    # Obtener solo las notificaciones no leídas
-    notificaciones_no_leidas = [n for n in notificaciones_pedidos if not n.get('leida', False)]
-    return jsonify(notificaciones_no_leidas)
+    return jsonify(obtener_notificaciones_no_leidas())
 
 @app.route('/marcar_notificacion_leida/<int:notificacion_id>', methods=['POST'])
 @login_required
 @role_required(['admin', 'mesero', 'cocinero'])
 def marcar_notificacion_leida(notificacion_id):
     try:
-        # Buscar la notificación por ID
-        notificacion_encontrada = False
-        for notif in notificaciones_pedidos:
-            if notif['id'] == notificacion_id:
-                notif['leida'] = True
-                notificacion_encontrada = True
-                break
-        
-        if not notificacion_encontrada:
-            return jsonify({'error': 'Notificación no encontrada'}), 404
-            
-        return jsonify({'success': True})
+        with notificaciones_lock:
+            for notif in notificaciones_pedidos:
+                if notif['id'] == notificacion_id:
+                    notif['leida'] = True
+                    return jsonify({'success': True})
+        return jsonify({'error': 'Notificación no encontrada'}), 404
     except Exception as e:
-        print(f"Error al marcar notificación como leída: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/atender_mesa/<int:mesa_id>', methods=['POST'])
@@ -1093,7 +1162,7 @@ def atender_mesa(mesa_id):
                                 for datos in productos_agrupados.values()]
                 }
             }
-            notificaciones_pedidos.append(notificacion)
+            agregar_notificacion(notificacion)
 
             # Confirmar transacción
             cursor.execute("COMMIT")
@@ -1206,7 +1275,7 @@ def finalizar(mesa_id):
                                     for p in pedido_info['productos'].split(',')] if pedido_info['productos'] else []
                     }
                 }
-                notificaciones_pedidos.append(notificacion)
+                agregar_notificacion(notificacion)
 
             # Eliminar la notificación asociada al pedido pagado
             notificaciones_pedidos = [n for n in notificaciones_pedidos if n.get('factura_id') != pedido_id]
@@ -1389,12 +1458,25 @@ def empleados():
         salario = request.form['salario']
         telefono = request.form['telefono']
         direccion = request.form['direccion']
-        email = request.form.get('email', '')  # Nuevo campo para email
-        username = request.form.get('username', '')  # Nuevo campo para nombre de usuario
-        password = request.form.get('password', '')  # Nuevo campo para contraseña
+        email = request.form.get('email', '')
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
 
         try:
             cursor = connection.cursor()
+            
+            # Validar que el username no exista usando el índice
+            cursor.execute("SELECT id FROM usuario_empleado WHERE nombre_user = ? LIMIT 1", (username,))
+            if cursor.fetchone():
+                flash("El nombre de usuario ya existe", "danger")
+                return render_template('registro_empleado.html')
+
+            # Validar que el email no exista usando el índice
+            if email:
+                cursor.execute("SELECT id FROM usuario_empleado WHERE email = ? LIMIT 1", (email,))
+                if cursor.fetchone():
+                    flash("El correo electrónico ya está registrado", "danger")
+                    return render_template('registro_empleado.html')
             
             # Iniciar transacción
             cursor.execute("BEGIN TRANSACTION")
@@ -1407,13 +1489,18 @@ def empleados():
             
             # 2. Si se proporcionaron credenciales, crear usuario
             if username and password:
-                # Determinar el rol basado en el cargo
-                if cargo.lower() == 'administrador':
-                    rol = 'admin'
-                elif cargo.lower() == 'cocinero':
-                    rol = 'cocinero'
-                else:
-                    rol = 'mesero'
+                # Validar que el cargo corresponda a un rol válido
+                roles_validos = {
+                    'administrador': 'admin',
+                    'cocinero': 'cocinero',
+                    'mesero': 'mesero'
+                }
+                
+                rol = roles_validos.get(cargo.lower())
+                if not rol:
+                    flash("El cargo seleccionado no corresponde a un rol válido", "danger")
+                    connection.rollback()
+                    return render_template('registro_empleado.html')
                 
                 cursor.execute("""
                     INSERT INTO usuario_empleado (nombre_user, contra_user, rol, email) 
@@ -1431,8 +1518,17 @@ def empleados():
             flash(f"Error al registrar empleado: {str(e)}", "danger")
             return render_template('registro_empleado.html')
     else:
-        return render_template('registro_empleado.html')
-
+        # Obtener roles existentes para el sidebar usando el índice
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT rol, COUNT(*) as total
+            FROM usuario_empleado
+            WHERE rol IS NOT NULL
+            GROUP BY rol
+        """)
+        roles_existentes = cursor.fetchall()
+        
+        return render_template('registro_empleado.html', roles_existentes=roles_existentes)
 
 @app.route('/empleados')
 @login_required
@@ -1440,13 +1536,18 @@ def empleados():
 def mostrar_empleados():
     try:
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM empleados")
+        # Optimizar consulta usando índices
+        cursor.execute("""
+            SELECT e.*, u.rol, u.nombre_user
+            FROM empleados e
+            LEFT JOIN usuario_empleado u ON e.id = u.id
+            ORDER BY e.nombre
+        """)
         empleados = cursor.fetchall()
         return render_template('empleados.html', empleados=empleados)
-    except:
-        flash("No se pueden cargar los empleados")
+    except Exception as e:
+        flash(f"Error al cargar los empleados: {str(e)}", "danger")
         return render_template('empleados.html', empleados=[])
-
 
 @app.route("/eliminar_producto/<int:id>", methods=["DELETE"])
 @login_required
@@ -2064,7 +2165,7 @@ def procesar_pago_barra():
                 'productos': productos_info
             }
         }
-        notificaciones_pedidos.append(notificacion)
+        agregar_notificacion(notificacion)
 
         connection.commit()
         cursor.close()
