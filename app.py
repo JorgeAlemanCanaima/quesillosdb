@@ -2136,23 +2136,20 @@ def cierre_corte():
 @role_required(['cocinero', 'admin'])
 def marcar_pedido_listo(pedido_id):
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = connection.cursor()
         
         # Actualizar el estado del pedido
         cursor.execute("""
             UPDATE pedidos 
-            SET listo = TRUE 
-            WHERE pedido_id = %s
+            SET estado = 'listo' 
+            WHERE id = ?
         """, (pedido_id,))
         
-        conn.commit()
+        connection.commit()
         return jsonify({'success': True})
     except Exception as e:
+        print(f"Error al marcar pedido como listo: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
-    finally:
-        if conn:
-            conn.close()
 
 @app.route('/barra/<int:barra_id>')
 @login_required

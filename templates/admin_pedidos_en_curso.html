@@ -6,38 +6,81 @@
 <div class="container mt-4">
     <h1 class="mb-4">Pedidos en Curso (Mesas y Para Llevar)</h1>
 
-    {% if pedidos %}
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Factura #</th>
-                    <th>Ubicación</th>
-                    <th>Mesero</th>
-                    <th>Hora Pedido</th>
-                    <th>Tiempo Transcurrido</th>
-                    <th>Monto Actual</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pedido in pedidos %}
-                <tr>
-                    <td>{{ pedido.factura_codigo }}</td>
-                    <td>{{ pedido.nombre_ubicacion }}</td>
-                    <td>{{ pedido.mesero }}</td>
-                    <td>{{ pedido.fecha_hora | datetimeformat('%H:%M') }}</td>
-                    <td>{{ pedido.tiempo_transcurrido }}</td>
-                    <td>C${{ pedido.monto_actual | number_format(2) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div id="pedidosContainer">
+        {% if pedidos %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Factura #</th>
+                        <th>Ubicación</th>
+                        <th>Mesero</th>
+                        <th>Hora Pedido</th>
+                        <th>Tiempo Transcurrido</th>
+                        <th>Monto Actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in pedidos %}
+                    <tr>
+                        <td>{{ pedido.factura_codigo }}</td>
+                        <td>{{ pedido.nombre_ubicacion }}</td>
+                        <td>{{ pedido.mesero }}</td>
+                        <td>{{ pedido.fecha_hora | datetimeformat('%H:%M') }}</td>
+                        <td class="tiempo-transcurrido" data-fecha-hora="{{ pedido.fecha_hora }}"></td>
+                        <td>C${{ pedido.monto_actual | number_format(2) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle"></i> No hay pedidos en curso en mesas o para llevar.
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="alert alert-info text-center">
-        <i class="bi bi-info-circle"></i> No hay pedidos en curso en mesas o para llevar.
-    </div>
-    {% endif %}
-
 </div>
+
+<script>
+    // Función para calcular el tiempo transcurrido
+    function actualizarTiempoTranscurrido() {
+        document.querySelectorAll('.tiempo-transcurrido').forEach(element => {
+            const fechaHora = new Date(element.dataset.fechaHora);
+            const ahora = new Date();
+            const diffMinutos = Math.floor((ahora - fechaHora) / (1000 * 60));
+            
+            if (diffMinutos < 60) {
+                element.textContent = `${diffMinutos} min`;
+            } else {
+                const horas = Math.floor(diffMinutos / 60);
+                const minutos = diffMinutos % 60;
+                element.textContent = `${horas}h ${minutos}m`;
+            }
+        });
+    }
+
+    // Función para actualizar los pedidos
+    function actualizarPedidos() {
+        fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const nuevoContenido = doc.getElementById('pedidosContainer').innerHTML;
+                document.getElementById('pedidosContainer').innerHTML = nuevoContenido;
+                actualizarTiempoTranscurrido();
+            })
+            .catch(error => console.error('Error al actualizar pedidos:', error));
+    }
+
+    // Actualizar tiempo transcurrido cada segundo
+    setInterval(actualizarTiempoTranscurrido, 1000);
+    
+    // Actualizar pedidos cada 5 segundos
+    setInterval(actualizarPedidos, 5000);
+
+    // Inicializar el tiempo transcurrido al cargar la página
+    document.addEventListener('DOMContentLoaded', actualizarTiempoTranscurrido);
+</script>
 {% endblock %} 
