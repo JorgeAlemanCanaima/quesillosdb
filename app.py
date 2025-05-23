@@ -120,24 +120,10 @@ def number_format(value, decimals=0):
     return txt.replace(",", "X").replace(".", ",").replace("X", ".")
 
 @app.template_filter('datetimeformat')
-def datetimeformat(value, format='%Y-%m-%d %H:%M'):
-    if value is None:
-        return ""
-    
-    if isinstance(value, str):
-        # Eliminar la 'T' si existe
-        value = value.replace('T', ' ')
-        try:
-            # Intentar parsear diferentes formatos
-            value = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-        except ValueError:
-            try:
-                value = datetime.strptime(value, '%Y-%m-%d %H:%M')
-            except ValueError:
-                return value  # Devuelve el valor original si no se puede parsear
-    
-    # Formatear la fecha
-    return value.strftime(format)
+def datetimeformat(value):
+    if value:
+        return value.strftime('%d/%m/%Y %H:%M')
+    return ''
 
 app.secret_key = 'tu_clave_secreta'  # Cambia esto por una clave segura en producción
 
@@ -663,7 +649,7 @@ def usuarios():
 #ruta para el ingreso de productos
 @app.route('/ingresoproducto', methods=['GET', 'POST'])
 @login_required
-@role_required(['admin', 'mesero', 'cocinero'])  # Permitir acceso a admin, mesero y cocinero
+@role_required(['admin', 'mesero'])  # Permitir acceso a admin y mesero
 def ingresoproducto():
     if request.method == 'POST':
         nombre = request.form['nombre']
@@ -688,7 +674,7 @@ def ingresoproducto():
 #Ruta en la que podemos ver todo el listado de platillos y bebidas
 @app.route('/catalogoproductos', methods=['GET', 'POST'])
 @login_required
-@role_required(['admin', 'mesero', 'cocinero'])  # Permitir acceso a admin, mesero y cocinero
+@role_required(['admin', 'mesero'])  # Permitir acceso a admin y mesero
 def catalogoproductos():
     try:
         cursor = connection.cursor()
@@ -954,7 +940,7 @@ notificaciones_pedidos = []
 
 @app.route('/notificaciones')
 @login_required
-@role_required(['admin', 'mesero', 'cocinero'])  # Permitir acceso a admin, meseros y cocineros
+@role_required(['admin', 'mesero'])  # Permitir acceso a admin y meseros
 def obtener_notificaciones():
     # Obtener solo las notificaciones no leídas
     notificaciones_no_leidas = [n for n in notificaciones_pedidos if not n.get('leida', False)]
@@ -1935,78 +1921,24 @@ def cierre_corte():
 @login_required
 @role_required(['cocinero', 'admin'])
 def marcar_pedido_listo(pedido_id):
-    global notificaciones_pedidos
     try:
-        cursor = connection.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
-        # Obtener información del pedido
-        cursor.execute('''
-            SELECT f.codigo, cl.num_mesa, cl.nombre as cliente_nombre,
-                   (SELECT GROUP_CONCAT(pr.nombre || ' x' || pp.cantidad)
-                    FROM pedido_productos pp
-                    JOIN productos pr ON pp.producto_id = pr.id
-                    WHERE pp.pedido_id = p.id) as productos,
-                   (SELECT SUM(pr.precio * pp.cantidad)
-                    FROM pedido_productos pp
-                    JOIN productos pr ON pp.producto_id = pr.id
-                    WHERE pp.pedido_id = p.id) as total_monto,
-                   (SELECT COUNT(*)
-                    FROM pedido_productos
-                    WHERE pedido_id = p.id) as total_productos
-            FROM pedidos p
-            JOIN facturas f ON p.codigo_factura = f.codigo
-            JOIN clientes cl ON p.clientes_id = cl.id
-            WHERE p.id = ?
-        ''', (pedido_id,))
-        pedido_info = cursor.fetchone()
-        
-        if not pedido_info:
-            return jsonify({'error': 'Pedido no encontrado'}), 404
-            
-        factura_codigo = pedido_info['codigo']
-        num_mesa = pedido_info['num_mesa']
-        mesa_nombre = mesas[num_mesa - 1]['nombre'] if 0 < num_mesa <= len(mesas) else f'Mesa {num_mesa}'
-        
-        # Actualizar estado del pedido
-        cursor.execute('''
+        # Actualizar el estado del pedido
+        cursor.execute("""
             UPDATE pedidos 
-            SET estado = 'listo'
-            WHERE id = ?
-        ''', (pedido_id,))
+            SET listo = TRUE 
+            WHERE pedido_id = %s
+        """, (pedido_id,))
         
-        # Crear notificación
-        hora_actual = datetime.now().strftime('%H:%M')
-        notificacion = {
-            'id': len(notificaciones_pedidos) + 1,
-            'tipo': 'pedido_listo',
-            'mensaje': f'Pedido #{factura_codigo} - {mesa_nombre} está listo',
-            'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
-            'mesa_id': num_mesa,
-            'pedido_id': pedido_id,
-            'leida': False,
-            'detalles': {
-                'cliente': pedido_info['cliente_nombre'],
-                'hora': hora_actual,
-                'total_productos': pedido_info['total_productos'],
-                'total_monto': pedido_info['total_monto'],
-                'productos': [{'nombre': p.split(' x')[0], 'cantidad': int(p.split(' x')[1])} 
-                            for p in pedido_info['productos'].split(',')] if pedido_info['productos'] else []
-            }
-        }
-        notificaciones_pedidos.append(notificacion)
-        
-        # Actualizar estado de la mesa
-        for mesa in mesas:
-            if mesa['id'] == num_mesa:
-                mesa['atendida'] = True
-                break
-        
-        connection.commit()
-        return jsonify({'success': True, 'message': 'Pedido marcado como listo'})
-        
+        conn.commit()
+        return jsonify({'success': True})
     except Exception as e:
-        print(f"Error al marcar pedido como listo: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/barra/<int:barra_id>')
 @login_required

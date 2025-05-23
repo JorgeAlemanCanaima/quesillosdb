@@ -1,40 +1,54 @@
 {% extends "layout.html" %}
 
 {% block title %}
-Pedidos Pendientes Cocina
+  Pedidos Pendientes - Cocina
 {% endblock %}
 
 {% block main %}
-<!-- Agregar SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<div class="container mt-4">
+    <h2 class="mb-4 text-center">Pedidos Pendientes</h2>
 
-<div class="container-fluid">
-    <h1 class="h3 mb-4">Pedidos Pendientes</h1>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-warning" role="alert">
+                {{ messages[0] }}
+            </div>
+        {% endif %}
+    {% endwith %}
 
-    <div class="row" id="pedidos-container">
+    <div class="row">
         {% for pedido in pedidos %}
-        <div class="col-md-4 mb-4 pedido-card" id="pedido-{{ pedido.pedido_id }}">
-            <div class="card h-100">
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow">
                 <div class="card-header bg-primary text-white">
-                    Pedido #{{ pedido.factura_codigo }} - Mesa {{ mesas[pedido.num_mesa - 1].nombre }}
+                    <h5 class="card-title mb-0">
+                        Mesa {{ pedido.num_mesa }} - Pedido #{{ pedido.factura_codigo }}
+                    </h5>
                 </div>
                 <div class="card-body">
-                    <p class="card-text"><strong>Hora:</strong> {{ pedido.fecha_hora }}</p>
-                    <h6 class="card-subtitle mb-2 text-muted">Productos:</h6>
-                    <ul>
-                        {% for item in pedido.productos %}
-                        <li>{{ item.producto_nombre }} x {{ item.cantidad }}</li>
+                    <p class="card-text">
+                        <strong>Fecha:</strong> {{ pedido.fecha_hora|datetimeformat }}<br>
+                        <strong>Productos:</strong>
+                    </p>
+                    <ul class="list-group list-group-flush">
+                        {% for producto in pedido.productos %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ producto.producto_nombre }}
+                            <span class="badge bg-primary rounded-pill">{{ producto.cantidad }}</span>
+                        </li>
                         {% endfor %}
                     </ul>
                 </div>
-                <div class="card-footer text-end">
-                    <button onclick="marcarListo({{ pedido.pedido_id }})" class="btn btn-success btn-sm">Marcar como listo</button>
+                <div class="card-footer">
+                    <button class="btn btn-success w-100" onclick="marcarListo({{ pedido.pedido_id }})">
+                        Marcar como Listo
+                    </button>
                 </div>
             </div>
         </div>
         {% else %}
         <div class="col-12">
-            <div class="alert alert-info" role="alert">
+            <div class="alert alert-info text-center">
                 No hay pedidos pendientes en este momento.
             </div>
         </div>
@@ -44,71 +58,26 @@ Pedidos Pendientes Cocina
 
 <script>
 function marcarListo(pedidoId) {
-    Swal.fire({
-        title: '¿Estás seguro?',
-        text: '¿Deseas marcar este pedido como listo?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sí, marcar como listo',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch(`/cocina/marcar_listo/${pedidoId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Eliminar la tarjeta del pedido de la vista
-                    const pedidoCard = document.getElementById(`pedido-${pedidoId}`);
-                    if (pedidoCard) {
-                        pedidoCard.remove();
-                    }
-                    
-                    // Si no quedan pedidos, mostrar mensaje
-                    const pedidosContainer = document.getElementById('pedidos-container');
-                    if (pedidosContainer.children.length === 0) {
-                        pedidosContainer.innerHTML = `
-                            <div class="col-12">
-                                <div class="alert alert-info" role="alert">
-                                    No hay pedidos pendientes en este momento.
-                                </div>
-                            </div>
-                        `;
-                    }
-
-                    // Mostrar mensaje de éxito
-                    Swal.fire({
-                        title: '¡Listo!',
-                        text: 'El pedido ha sido marcado como listo.',
-                        icon: 'success',
-                        confirmButtonText: 'Aceptar'
-                    });
-                } else {
-                    Swal.fire({
-                        title: 'Error',
-                        text: 'Error al marcar el pedido como listo: ' + data.error,
-                        icon: 'error',
-                        confirmButtonText: 'Aceptar'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Error al marcar el pedido como listo',
-                    icon: 'error',
-                    confirmButtonText: 'Aceptar'
-                });
-            });
-        }
-    });
+    if (confirm('¿Estás seguro de marcar este pedido como listo?')) {
+        fetch(`/cocina/marcar_listo/${pedidoId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error al marcar el pedido como listo');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al marcar el pedido como listo');
+        });
+    }
 }
 </script>
 {% endblock %} 

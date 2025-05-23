@@ -747,49 +747,31 @@
             
             
             <li class="nav-small-cap">
-              <i class="ti ti-dots nav-small-cap-icon fs-6"></i>
-              <span class="hide-menu">Operaciones</span>
+              <i class="ti ti-dots fs-4"></i>
+              <span class="hide-menu">OPERACIONES</span>
             </li>
+
+            {% if session.get('rol') != 'cocinero' %}
             <li class="sidebar-item">
-              <a class="sidebar-link" href="{{ url_for('admin_pedidos_en_curso') }}" aria-expanded="false">
+              <a class="sidebar-link" href="{{ url_for('mesas1') }}" aria-expanded="false">
                 <span>
-                  <i class="bi bi-cart text-primary fs-6"></i>
+                  <i class="ti ti-shopping-cart"></i>
                 </span>
                 <span class="hide-menu">Pedidos</span>
               </a>
             </li>
+            {% endif %}
 
-            {% if session.get('rol') in ['admin', 'cocinero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('cocina_pedidos_pendientes') }}" aria-expanded="false">
                 <span>
-                  <i class="bi bi-clock-history text-danger fs-6"></i>
+                  <i class="ti ti-clock"></i>
                 </span>
                 <span class="hide-menu">Cocina</span>
               </a>
             </li>
-            {% endif %}
-            {% if session.get('rol') in ['admin', 'mesero'] %}
-            <li class="sidebar-item">
-              <a class="sidebar-link" href="{{ url_for('clientes') }}" aria-expanded="false">
-                <span>
-                  <i class="bi bi-person-fill text-warning fs-6"></i>
-                </span>
-                <span class="hide-menu">Clientes</span>
-              </a>
-            </li>
-            {% endif %}
-            {% if session.get('rol') in ['admin', 'cajero'] %}
-            <li class="sidebar-item">
-              <a class="sidebar-link" href="{{ url_for('facturacion') }}" aria-expanded="false">
-                <span>
-                  <i class="bi bi-file-earmark-text text-success fs-6"></i>
-                </span>
-                <span class="hide-menu">Historial de pedidos</span>
-              </a>
-            </li>
-            {% endif %}
-            {% if session.get('rol') in ['admin', 'mesero'] %}
+
+            {% if session.get('rol') in ['admin', 'mesero', 'cocinero'] %}
             <li class="nav-small-cap">
               <i class="bi bi-boxes nav-small-cap-icon fs-6"></i>
               <span class="hide-menu">Platitllos y bebidas</span>
@@ -802,12 +784,37 @@
                 <span class="hide-menu">Entrada Producto</span>
               </a>
             </li>
+            {% endif %}
+
+            {% if session.get('rol') in ['admin', 'mesero'] %}
             <li class="sidebar-item">
               <a class="sidebar-link" href="{{ url_for('ingresoproducto') }}" aria-expanded="false">
                 <span>
                   <i class="bi bi-plus-square text-primary fs-6"></i>
                 </span>
                 <span class="hide-menu">Registrar producto</span>
+              </a>
+            </li>
+            {% endif %}
+
+            {% if session.get('rol') in ['admin'] %}
+            <li class="sidebar-item">
+              <a class="sidebar-link" href="{{ url_for('clientes') }}" aria-expanded="false">
+                <span>
+                  <i class="bi bi-person-fill text-warning fs-6"></i>
+                </span>
+                <span class="hide-menu">Clientes</span>
+              </a>
+            </li>
+            {% endif %}
+
+            {% if session.get('rol') in ['admin', 'cajero'] %}
+            <li class="sidebar-item">
+              <a class="sidebar-link" href="{{ url_for('facturacion') }}" aria-expanded="false">
+                <span>
+                  <i class="bi bi-file-earmark-text text-success fs-6"></i>
+                </span>
+                <span class="hide-menu">Historial de pedidos</span>
               </a>
             </li>
             {% endif %}
