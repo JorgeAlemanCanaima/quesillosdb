@@ -394,7 +394,7 @@
 
         <!-- Sección de Productos -->
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card p-4">
                     <h5 class="section-title">
                         <i class="bi bi-star"></i>
@@ -410,7 +410,23 @@
                     </ul>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="section-title">
+                        <i class="bi bi-table"></i>
+                        Mesas Más Usadas
+                    </h5>
+                    <ul class="list-group list-group-flush">
+                        {% for mesa in mesas_mas_usadas %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ mesa[0] }}
+                            <span class="badge bg-primary rounded-pill">{{ mesa[1] }} usos</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
                 <div class="card p-4">
                     <h5 class="section-title">
                         <i class="bi bi-pie-chart"></i>
@@ -418,6 +434,46 @@
                     </h5>
                     <div class="chart-container">
                         <canvas id="topMonthsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Gastos Mensuales -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card p-4">
+                    <h5 class="section-title">
+                        <i class="bi bi-cash-stack"></i>
+                        Gastos Mensuales
+                    </h5>
+                    <div class="chart-container">
+                        <canvas id="gastosChart"></canvas>
+                    </div>
+                    <div class="table-responsive mt-4">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Mes</th>
+                                    <th class="text-end">Gastos</th>
+                                    <th class="text-end">Ventas</th>
+                                    <th class="text-end">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
+                                {% for i in range(12) %}
+                                <tr>
+                                    <td>{{ meses[i] }}</td>
+                                    <td class="text-end">C${{ "%.2f"|format(gastos_mensuales[i]) }}</td>
+                                    <td class="text-end">C${{ "%.2f"|format(ventas_mensuales[i]) }}</td>
+                                    <td class="text-end {% if ventas_mensuales[i] - gastos_mensuales[i] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        C${{ "%.2f"|format(ventas_mensuales[i] - gastos_mensuales[i]) }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -535,6 +591,71 @@
                         callbacks: {
                             label: function(context) {
                                 return context.label + ': C$' + context.raw.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de gastos mensuales
+        const gastosCtx = document.getElementById('gastosChart');
+        const gastosChart = new Chart(gastosCtx, {
+            type: 'line',
+            data: {
+                labels: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+                datasets: [{
+                    label: 'Gastos Mensuales (C$)',
+                    data: {{ gastos_mensuales|tojson }},
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Ventas Mensuales (C$)',
+                    data: {{ ventas_mensuales|tojson }},
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Córdobas (C$)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': C$' + context.raw.toLocaleString();
                             }
                         }
                     }

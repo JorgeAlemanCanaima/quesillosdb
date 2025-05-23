@@ -384,6 +384,31 @@ def historial():
         """)
         productos_mas_vendidos = cursor.fetchall() or []
 
+        # Mesas más usadas
+        cursor.execute("""
+            SELECT cl.nombre as mesa, COUNT(*) as uso
+            FROM pedidos p
+            JOIN clientes cl ON p.clientes_id = cl.id
+            WHERE cl.nombre != 'Cliente Barra'
+            GROUP BY cl.nombre
+            ORDER BY uso DESC
+            LIMIT 5
+        """)
+        mesas_mas_usadas = cursor.fetchall() or []
+
+        # Gastos mensuales
+        cursor.execute("""
+            SELECT strftime('%m', fecha) as mes, SUM(precio) as total
+            FROM movimientos_caja
+            WHERE tipo = 'salida'
+            GROUP BY mes
+            ORDER BY mes
+        """)
+        gastos_mensuales = [0] * 12
+        for row in cursor.fetchall():
+            mes = int(row[0]) - 1
+            gastos_mensuales[mes] = row[1] or 0
+
         # Mejores meses (top 5)
         cursor.execute("""
             SELECT strftime('%m', p.fecha_hora, 'localtime') as mes, SUM(f.monto) as total
@@ -405,6 +430,8 @@ def historial():
                             ventas_mensuales=ventas_mensuales,
                             ventas_totales=ventas_totales,
                             productos_mas_vendidos=productos_mas_vendidos,
+                            mesas_mas_usadas=mesas_mas_usadas,
+                            gastos_mensuales=gastos_mensuales,
                             meses_top=meses_top,
                             ventas_top=ventas_top,
                             propinas_hoy=propinas_hoy,
@@ -1649,17 +1676,22 @@ def editar_pedidos(pedido_id):
         return jsonify({"message": "Pedido guardado con éxito", "redirect": url_for('mesas1')}), 200
 
 
-        @app.route('/ver_factura/<int:factura_id>')
-        def ver_factura(factura_id):
-    # Lógica para obtener la factura desde la base de datos
-            conn = sqlite3.connect("quesillos.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM facturas WHERE codigo = ?", (factura_id,))
-        factura = cursor.fetchone()
-        conn.close()
+    except Exception as e:
+        print(f"Error al procesar el pedido: {e}")
+        connection.rollback()
+        return jsonify({"error": "Error interno del servidor"}), 500
 
-        if factura:
-            factura_dict = {
+@app.route('/ver_factura/<int:factura_id>')
+def ver_factura(factura_id):
+    # Lógica para obtener la factura desde la base de datos
+    conn = sqlite3.connect("quesillos.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM facturas WHERE codigo = ?", (factura_id,))
+    factura = cursor.fetchone()
+    conn.close()
+
+    if factura:
+        factura_dict = {
             "codigo": factura[0],
             "pedido_id": factura[1],
             "monto": factura[2],
@@ -1667,15 +1699,7 @@ def editar_pedidos(pedido_id):
             "estado": factura[4]
         }
         return render_template("factura.html", factura=factura_dict)
-
-
-        
-
-
-    except Exception as e:
-        print(f"Error al procesar el pedido: {e}")
-        connection.rollback()
-        return jsonify({"error": "Error interno del servidor"}), 500
+    return "Factura no encontrada", 404
 
 @app.route('/all_products')
 @login_required

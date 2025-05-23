@@ -1,80 +1,118 @@
 {% extends "layout.html" %}
 
-{% block title %}Registro de Empleados{% endblock %}
+{% block title %}
+Registro de Empleado
+{% endblock %}
 
 {% block main %}
-<div class="container mt-5">
-    <div class="card shadow-lg border-0 rounded-4">
-        <div class="card-header bg-primary text-white text-center rounded-top-4">
-            <h3 class="mb-0">📋 Registrar Nuevo Empleado</h3>
-        </div>
-        <div class="card-body">
-            <form id="formEmpleado" method="POST" action="{{ url_for('empleados') }}">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="nombre" class="form-label">👤 Nombre completo</label>
-                        <input type="text" class="form-control rounded-3" id="nombre" name="nombre" placeholder="ingrese" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="cargo" class="form-label">💼 Cargo</label>
-                        <input type="text" class="form-control rounded-3" id="cargo" name="cargo" placeholder="ingrese..." required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="salario" class="form-label">💰 Salario</label>
-                        <input type="number" class="form-control rounded-3" id="salario" name="salario" placeholder="ingrese" min="0" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="telefono" class="form-label">📞 Teléfono</label>
-                        <input type="tel" class="form-control rounded-3" id="telefono" name="telefono" placeholder="ingrese" pattern="[0-9]{8,15}" required>
-                    </div>
-                    <div class="col-12">
-                        <label for="direccion" class="form-label">📍 Dirección</label>
-                        <textarea class="form-control rounded-3" id="direccion" name="direccion" rows="3" placeholder="ingrese" required></textarea>
-                    </div>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Registro de Nuevo Empleado</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="empleadoForm" onsubmit="return validarFormulario()">
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre Completo</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required
+                                   onkeyup="this.value = this.value.replace(/\b\w/g, l => l.toUpperCase())">
+                            <div class="form-text">Ingrese el nombre completo</div>
+                        </div>
 
-                    <!-- Campos para el usuario -->
-                    <div class="col-12 mt-4">
-                        <h4 class="border-bottom pb-2">📱 Datos de Usuario</h4>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="email" class="form-label">📧 Correo Electrónico</label>
-                        <input type="email" class="form-control rounded-3" id="email" name="email" placeholder="ejemplo@correo.com" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="username" class="form-label">👤 Nombre de Usuario</label>
-                        <input type="text" class="form-control rounded-3" id="username" name="username" placeholder="nombre de usuario" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="password" class="form-label">🔑 Contraseña</label>
-                        <input type="password" class="form-control rounded-3" id="password" name="password" placeholder="contraseña" maxlength="5" required>
-                    </div>
+                        <div class="mb-3">
+                            <label for="cargo" class="form-label">Cargo</label>
+                            <select class="form-select" id="cargo" name="cargo" required>
+                                <option value="">Seleccione un cargo</option>
+                                <option value="Cajero">Cajero</option>
+                                <option value="Mesero">Mesero</option>
+                                <option value="Cocinero">Cocinero</option>
+                                <option value="Jardinero">Jardinero</option>
+                                <option value="Administrador">Administrador</option>
+                                <option value="Seguridad">Seguridad</option>
+                                <option value="Conserje">Conserje</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="salario" class="form-label">Salario (C$)</label>
+                            <input type="text" class="form-control" id="salario" name="salario" required
+                                   onkeyup="formatearSalario(this)">
+                            <div class="form-text">Ingrese el salario en córdobas</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="telefono" class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="telefono" name="telefono" required
+                                   pattern="[0-9]{8}" maxlength="8">
+                            <div class="form-text">Ingrese 8 dígitos sin espacios ni guiones</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="direccion" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="direccion" name="direccion" required
+                                   onkeyup="this.value = this.value.replace(/\b\w/g, l => l.toUpperCase())">
+                            <div class="form-text">Ingrese la dirección completa</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="form-text">Ingrese un correo electrónico válido</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Registrar Empleado</button>
+                            <a href="{{ url_for('mostrar_empleados') }}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
                 </div>
-                <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm">
-                        ✅ Registrar Empleado
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    document.getElementById('formEmpleado').addEventListener('submit', function(e) {
-        const nombre = document.getElementById('nombre').value.trim();
-        if (nombre.length < 3) {
-            e.preventDefault();
-            alert("⚠️ El nombre debe tener al menos 3 caracteres.");
-            return;
-        }
+function formatearSalario(input) {
+    // Eliminar todo excepto números
+    let valor = input.value.replace(/[^\d]/g, '');
+    
+    // Formatear con comas para los miles
+    if (valor.length > 0) {
+        valor = parseInt(valor).toLocaleString('es-NI');
+    }
+    
+    input.value = valor;
+}
 
-        // Validar que la contraseña tenga exactamente 5 caracteres
-        const password = document.getElementById('password').value.trim();
-        if (password.length !== 5) {
-            e.preventDefault();
-            alert("⚠️ La contraseña debe tener exactamente 5 caracteres.");
-            return;
-        }
-    });
+function validarFormulario() {
+    const nombre = document.getElementById('nombre').value;
+    const cargo = document.getElementById('cargo').value;
+    const salario = document.getElementById('salario').value;
+    const telefono = document.getElementById('telefono').value;
+    const direccion = document.getElementById('direccion').value;
+    const email = document.getElementById('email').value;
+
+    // Validar que no haya campos vacíos
+    if (!nombre || !cargo || !salario || !telefono || !direccion || !email) {
+        alert('Por favor, complete todos los campos');
+        return false;
+    }
+
+    // Validar formato de teléfono
+    if (!/^\d{8}$/.test(telefono)) {
+        alert('El teléfono debe tener 8 dígitos');
+        return false;
+    }
+
+    // Validar formato de email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Ingrese un correo electrónico válido');
+        return false;
+    }
+
+    return true;
+}
 </script>
 {% endblock %}
