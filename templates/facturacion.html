@@ -438,86 +438,227 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
-        // Configuración del PDF
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        
-        // Encabezado de la factura
-        doc.setFontSize(20);
-        doc.setFont('helvetica', 'bold');
-        doc.text('QUESILLOS LO NUESTRO', 105, 20, { align: 'center' });
-        
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        doc.text('DIR. CONTIGUO A CLARO ALTAMIRA', 105, 28, { align: 'center' });
-        doc.text('MANAGUA, NICARAGUA', 105, 35, { align: 'center' });
-        doc.text('TELÉFONO: 2277-4001', 105, 42, { align: 'center' });
-        
-        // Línea separadora
-        doc.setLineWidth(0.5);
-        doc.line(15, 48, 195, 48);
-        
-        // Información de la factura
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text('INFORMACIÓN DE LA FACTURA', 20, 58);
-        
-        doc.setFont('helvetica', 'normal');
-        doc.text(`ID Factura: ${currentFactura.codigo}`, 20, 65);
-        doc.text(`Fecha: ${currentFactura.fecha}`, 20, 72);
-        doc.text(`Mesa: ${currentFactura.mesa}`, 20, 79);
-        doc.text(`Cliente: ${currentFactura.cliente}`, 20, 86);
-        doc.text(`Mesero: ${currentFactura.mesero}`, 20, 93);
-        doc.text(`Tipo de Pago: ${currentFactura.tipo_pago ? currentFactura.tipo_pago.toUpperCase() : 'NO ESPECIFICADO'}`, 20, 100);
-        if (currentFactura.tipo_pago === 'tarjeta' && currentFactura.tipo_tarjeta) {
-            doc.text(`Tipo de Tarjeta: ${currentFactura.tipo_tarjeta.toUpperCase()}`, 20, 107);
+        // Definir colores
+        const colors = {
+            primary: [41, 128, 185],    // Azul principal
+            secondary: [52, 152, 219],  // Azul secundario
+            accent: [231, 76, 60],      // Rojo acento
+            success: [46, 204, 113],    // Verde
+            lightGray: [236, 240, 241], // Gris claro
+            darkGray: [44, 62, 80]      // Gris oscuro
+        };
+
+        // Función para generar el contenido del PDF
+        function generarContenidoPDF() {
+            // Fondo decorativo para el encabezado
+            doc.setFillColor(...colors.lightGray);
+            doc.rect(0, 38, 210, 25, 'F');
+            
+            // Encabezado de la factura
+            doc.setFontSize(22);
+            doc.setTextColor(...colors.primary);
+            doc.setFont('helvetica', 'bold');
+            doc.text('QUESILLOS LO NUESTRO', 105, 48, { align: 'center' });
+            
+            doc.setFontSize(11);
+            doc.setTextColor(...colors.darkGray);
+            doc.setFont('helvetica', 'normal');
+            doc.text('DIR. CONTIGUO A CLARO ALTAMIRA', 105, 55, { align: 'center' });
+            doc.text('MANAGUA, NICARAGUA', 105, 61, { align: 'center' });
+            doc.text('TELÉFONO: 2277-4001', 105, 67, { align: 'center' });
+            
+            // Línea separadora decorativa
+            doc.setDrawColor(...colors.primary);
+            doc.setLineWidth(0.5);
+            doc.line(15, 73, 195, 73);
+            
+            // Información de la factura con fondo
+            doc.setFillColor(...colors.lightGray);
+            doc.roundedRect(15, 78, 180, 45, 2, 2, 'F');
+            
+            // Dividir la información en dos columnas
+            doc.setFontSize(11);
+            doc.setTextColor(...colors.primary);
+            doc.setFont('helvetica', 'bold');
+            doc.text('INFORMACIÓN DE LA FACTURA', 20, 85);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(...colors.darkGray);
+            doc.setFont('helvetica', 'normal');
+            
+            // Columna izquierda
+            doc.text(`ID Factura: ${currentFactura.codigo}`, 20, 92);
+            doc.text(`Fecha: ${currentFactura.fecha}`, 20, 99);
+            doc.text(`Mesa: ${currentFactura.mesa}`, 20, 106);
+            
+            // Columna derecha
+            doc.text(`Cliente: ${currentFactura.cliente}`, 110, 92);
+            doc.text(`Mesero: ${currentFactura.mesero}`, 110, 99);
+            
+            // Tipo de pago con badge
+            const tipoPago = currentFactura.tipo_pago ? currentFactura.tipo_pago.toUpperCase() : 'NO ESPECIFICADO';
+            doc.setFillColor(...colors.secondary);
+            doc.roundedRect(20, 113, 40, 8, 2, 2, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Pago: ${tipoPago}`, 25, 118);
+            
+            if (currentFactura.tipo_pago === 'tarjeta' && currentFactura.tipo_tarjeta) {
+                const tipoTarjeta = currentFactura.tipo_tarjeta.toLowerCase();
+                
+                // Primero dibujar el texto del tipo de tarjeta
+                doc.setFillColor(...colors.accent);
+                doc.roundedRect(65, 113, 30, 8, 2, 2, 'F');
+                doc.text(`${currentFactura.tipo_tarjeta.toUpperCase()}`, 70, 118);
+                
+                // Luego dibujar el logo del banco a la derecha
+                const bancoX = 100;  // Mover más a la derecha
+                const bancoY = 113;
+                const bancoWidth = tipoTarjeta === 'banpro' ? 12 : 15;  // Aún más pequeño
+                const bancoHeight = tipoTarjeta === 'banpro' ? 6 : 8;   // Aún más pequeño
+                
+                // Fondo blanco para el logo
+                doc.setFillColor(255, 255, 255);
+                doc.rect(bancoX, bancoY, bancoWidth, bancoHeight, 'F');
+                
+                // Cargar y agregar el logo del banco
+                const bancoLogo = new Image();
+                bancoLogo.src = tipoTarjeta === 'banpro' ? '/static/images/logos/banpro.jpg' : '/static/images/logos/bac.png';
+                
+                bancoLogo.onload = function() {
+                    doc.addImage(
+                        bancoLogo, 
+                        tipoTarjeta === 'banpro' ? 'JPEG' : 'PNG', 
+                        bancoX, 
+                        bancoY, 
+                        bancoWidth, 
+                        bancoHeight,
+                        undefined,
+                        'FAST'
+                    );
+                    
+                    // Continuar con el resto del PDF
+                    continuarGeneracionPDF();
+                };
+                
+                bancoLogo.onerror = function() {
+                    // Si hay error al cargar el logo, continuar sin él
+                    continuarGeneracionPDF();
+                };
+            } else {
+                continuarGeneracionPDF();
+            }
         }
         
-        // Tabla de productos
-        const productosData = currentFactura.productos.map(p => [
-            p.nombre,
-            `C$${p.precio.toFixed(2)}`,
-            p.cantidad,
-            `C$${(p.precio * p.cantidad).toFixed(2)}`
-        ]);
+        function continuarGeneracionPDF() {
+            // Tabla de productos con estilo mejorado
+            const productosData = currentFactura.productos.map(p => [
+                p.nombre,
+                `C$${p.precio.toFixed(2)}`,
+                p.cantidad,
+                `C$${(p.precio * p.cantidad).toFixed(2)}`
+            ]);
+            
+            doc.autoTable({
+                startY: 128,
+                head: [['PRODUCTOS', 'PRECIO UNITARIO', 'CANTIDAD', 'TOTAL']],
+                body: productosData,
+                margin: { left: 15, right: 15 },
+                styles: { 
+                    fontSize: 9,
+                    cellPadding: 4,
+                    textColor: colors.darkGray
+                },
+                headStyles: { 
+                    fillColor: colors.primary,
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    halign: 'center',
+                    fontSize: 10
+                },
+                alternateRowStyles: {
+                    fillColor: colors.lightGray
+                },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { halign: 'right', cellWidth: 35 },
+                    2: { halign: 'center', cellWidth: 25 },
+                    3: { halign: 'right', cellWidth: 35 }
+                }
+            });
+            
+            // Resumen de pago con estilo mejorado
+            const finalY = doc.lastAutoTable.finalY + 5;
+            
+            // Fondo para el resumen
+            doc.setFillColor(...colors.lightGray);
+            doc.roundedRect(120, finalY, 75, 35, 3, 3, 'F');
+            
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.primary);
+            doc.text('RESUMEN DE PAGO', 125, finalY + 8);
+            
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...colors.darkGray);
+            doc.text(`Subtotal:`, 125, finalY + 15);
+            doc.text(`C$${currentFactura.subtotal.toFixed(2)}`, 190, finalY + 15, { align: 'right' });
+            
+            doc.text(`Propina:`, 125, finalY + 22);
+            doc.text(`C$${currentFactura.propina.toFixed(2)}`, 190, finalY + 22, { align: 'right' });
+            
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.accent);
+            doc.text(`Total:`, 125, finalY + 29);
+            doc.text(`C$${currentFactura.monto.toFixed(2)}`, 190, finalY + 29, { align: 'right' });
+            
+            // Pie de página con estilo
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(...colors.primary);
+            doc.text('¡Gracias por su preferencia!', 105, finalY + 45, { align: 'center' });
+            
+            // Línea decorativa final
+            doc.setDrawColor(...colors.primary);
+            doc.setLineWidth(0.2);
+            doc.line(15, finalY + 50, 195, finalY + 50);
+            
+            // Guardar el PDF
+            doc.save(`Factura_${currentFactura.codigo}.pdf`);
+        }
+
+        // Cargar el logo principal
+        const logo = new Image();
+        logo.src = '/static/images/logos/logo2.png';
         
-        doc.autoTable({
-            startY: 110,
-            head: [['PRODUCTOS', 'PRECIO UNITARIO', 'CANTIDAD', 'TOTAL']],
-            body: productosData,
-            margin: { left: 15, right: 15 },
-            styles: { 
-                fontSize: 10,
-                cellPadding: 5
-            },
-            headStyles: { 
-                fillColor: [41, 128, 185],
-                textColor: [255, 255, 255],
-                fontStyle: 'bold'
-            },
-            alternateRowStyles: {
-                fillColor: [245, 245, 245]
+        logo.onload = function() {
+            // Calcular dimensiones para mantener la proporción
+            const maxWidth = 40;
+            const maxHeight = 25;
+            let width = logo.width;
+            let height = logo.height;
+            
+            if (width > maxWidth) {
+                height = (maxWidth * height) / width;
+                width = maxWidth;
             }
-        });
+            if (height > maxHeight) {
+                width = (maxHeight * width) / height;
+                height = maxHeight;
+            }
+            
+            // Centrar el logo horizontalmente
+            const x = (210 - width) / 2;
+            
+            // Agregar el logo al PDF
+            doc.addImage(logo, 'PNG', x, 8, width, height);
+            
+            // Iniciar la generación del contenido
+            generarContenidoPDF();
+        };
         
-        // Totales
-        const finalY = doc.lastAutoTable.finalY + 10;
-        doc.setFont('helvetica', 'bold');
-        doc.text('RESUMEN DE PAGO', 20, finalY);
-        
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Subtotal: C$${currentFactura.subtotal.toFixed(2)}`, 160, finalY + 8, { align: 'right' });
-        doc.text(`Propina: C$${currentFactura.propina.toFixed(2)}`, 160, finalY + 16, { align: 'right' });
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Total: C$${currentFactura.monto.toFixed(2)}`, 160, finalY + 24, { align: 'right' });
-        
-        // Pie de página
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text('¡Gracias por su preferencia!', 105, finalY + 40, { align: 'center' });
-        
-        // Guardar el PDF
-        doc.save(`Factura_${currentFactura.codigo}.pdf`);
+        logo.onerror = function() {
+            // Si hay error al cargar el logo principal, continuar sin él
+            generarContenidoPDF();
+        };
     }
 
     // Configurar el modal para que se cargue cuando se muestre
