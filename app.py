@@ -1536,14 +1536,33 @@ def empleados():
 def mostrar_empleados():
     try:
         cursor = connection.cursor()
-        # Optimizar consulta usando índices
-        cursor.execute("""
+        
+        # Obtener el término de búsqueda del formulario
+        search_term = request.args.get('search_term', '')
+        
+        # Consulta base para obtener empleados
+        query = """
             SELECT e.*, u.rol, u.nombre_user
             FROM empleados e
             LEFT JOIN usuario_empleado u ON e.id = u.id
-            ORDER BY e.nombre
-        """)
+        """
+        
+        params = []
+        
+        # Añadir filtro si hay un término de búsqueda
+        if search_term:
+            query += " WHERE e.nombre LIKE ? OR e.cargo LIKE ? OR e.telefono LIKE ?"
+            # Usar % para búsqueda parcial (LIKE)
+            like_param = f'%{search_term}%'
+            params.extend([like_param, like_param, like_param])
+            
+        # Ordenar por ID
+        query += " ORDER BY e.id ASC"
+        
+        # Ejecutar la consulta
+        cursor.execute(query, params)
         empleados = cursor.fetchall()
+        
         return render_template('empleados.html', empleados=empleados)
     except Exception as e:
         flash(f"Error al cargar los empleados: {str(e)}", "danger")

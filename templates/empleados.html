@@ -16,6 +16,16 @@
       {% endif %}
     {% endwith %}
 
+    <form method="get" action="{{ url_for('mostrar_empleados') }}" class="mb-4">
+      <div class="input-group">
+        <input type="text" class="form-control" placeholder="Buscar empleado por nombre, cargo o teléfono..." name="search_term" value="{{ request.args.get('search_term', '') }}">
+        <button class="btn btn-outline-primary" type="submit">Buscar</button>
+        {% if request.args.get('search_term') %}
+          <a href="{{ url_for('mostrar_empleados') }}" class="btn btn-outline-secondary">Limpiar</a>
+        {% endif %}
+      </div>
+    </form>
+
     <div class="table-responsive">
       <table class="table table-striped table-hover table-bordered shadow">
         <thead class="table-primary">
@@ -31,12 +41,12 @@
         <tbody>
           {% for emp in empleados %}
           <tr>
-            <td>{{ emp[0] }}</td>
-            <td>{{ emp[1] }}</td>
-            <td>{{ emp[2] }}</td>
-            <td>C${{ emp[3] }}</td>
-            <td>{{ emp[4] }}</td>
-            <td>{{ emp[5] }}</td>
+            <td>{{ emp['id'] }}</td>
+            <td>{{ emp['nombre'] }}</td>
+            <td>{{ emp['cargo'] }}</td>
+            <td>C${{ emp['salario'] }}</td>
+            <td>{{ emp['telefono'] }}</td>
+            <td>{{ emp['direccion'] }}</td>
           </tr>
           {% endfor %}
         </tbody>
