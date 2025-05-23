@@ -21,6 +21,7 @@ import time
 from flask_caching import Cache
 from collections import deque
 from threading import Lock
+import bcrypt
 
 
 # Cargar variables de entorno
@@ -570,39 +571,81 @@ def verify_otp():
 
     return render_template('verify_otp.html')
 
+def hash_password(password):
+    """Genera un hash de la contraseña usando bcrypt"""
+    # Convertir la contraseña a minúsculas antes de hashear
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.lower().encode('utf-8'), salt)
+
+def check_password(password, hashed):
+    """Verifica si la contraseña coincide con el hash, ignorando mayúsculas/minúsculas"""
+    # Convertir la contraseña a minúsculas antes de verificar
+    return bcrypt.checkpw(password.lower().encode('utf-8'), hashed)
+
+def migrate_passwords():
+    """Migra las contraseñas existentes a hash"""
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT id, contra_user FROM usuario_empleado")
+        users = cursor.fetchall()
+        
+        for user in users:
+            # Verificar si la contraseña existe y no es None
+            if user['contra_user'] is not None:
+                # Verificar si ya es un hash bcrypt
+                if not user['contra_user'].startswith('$2b$'):
+                    # Convertir la contraseña a minúsculas antes de hashearla
+                    hashed = hash_password(user['contra_user'].lower())
+                    cursor.execute("""
+                        UPDATE usuario_empleado 
+                        SET contra_user = ? 
+                        WHERE id = ?
+                    """, (hashed.decode('utf-8'), user['id']))
+        
+        connection.commit()
+        print("Migración de contraseñas completada")
+    except Exception as e:
+        print(f"Error en migración de contraseñas: {e}")
+        connection.rollback()
+
 @app.route('/change-password', methods=['GET', 'POST'])
 def change_password():
     email = request.args.get('email')
     if not email:
-        flash("Error: No se proporcionó el correo electrónico.", "error")
         return redirect(url_for('login'))
-
+        
     if request.method == 'POST':
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-        email = request.form.get('email')
-
+        new_password = request.form.get('new_password').lower()  # Convertir a minúsculas
+        confirm_password = request.form.get('confirm_password').lower()  # Convertir a minúsculas
+        
         if new_password != confirm_password:
-            flash("Las contraseñas no coinciden.", "error")
+            flash("Las contraseñas no coinciden", "error")
             return redirect(url_for('change_password', email=email))
-
+            
+        if len(new_password) < 6:
+            flash("La contraseña debe tener al menos 6 caracteres", "error")
+            return redirect(url_for('change_password', email=email))
+            
         try:
+            hashed_password = hash_password(new_password)
             cursor = connection.cursor()
             cursor.execute("""
                 UPDATE usuario_empleado 
-                SET contra_user = ? 
+                SET contra_user = ?
                 WHERE email = ?
-            """, (new_password, email))
+            """, (hashed_password.decode('utf-8'), email))
             connection.commit()
-            
-            flash("Contraseña actualizada exitosamente. Por favor, inicia sesión con tu nueva contraseña.", "success")
+            flash("Contraseña actualizada correctamente", "success")
             return redirect(url_for('login'))
-        except sqlite3.Error as e:
-            print(f"[ERROR SQLite] {e}")
-            flash("Error al actualizar la contraseña.", "error")
+        except Exception as e:
+            print(f"Error al actualizar contraseña: {e}")
+            flash("Error al actualizar la contraseña", "error")
             return redirect(url_for('change_password', email=email))
 
     return render_template('change_password.html', email=email)
+
+# Ejecutar migración de contraseñas al iniciar la aplicación
+migrate_passwords()
 
 # Ruta para la página de inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
@@ -612,22 +655,20 @@ def login():
         password = request.form.get('password', '').strip()
 
         if not username or not password:
-            flash('Por favor complete todos los campos', 'error')
-            return redirect(url_for('login'))
+            return redirect(url_for('login', error='empty'))
 
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                SELECT id, nombre_user, rol 
+                SELECT id, nombre_user, rol, contra_user 
                 FROM usuario_empleado 
-                WHERE nombre_user = ? AND contra_user = ?
+                WHERE nombre_user = ?
                 LIMIT 1
-            """, (username, password))
+            """, (username,))
             user = cursor.fetchone()
             
-            if not user:
-                flash('Usuario o contraseña incorrectos', 'error')
-                return redirect(url_for('login'))
+            if not user or not check_password(password, user['contra_user'].encode('utf-8')):
+                return redirect(url_for('login', error='invalid'))
 
             session['user_id'] = user['id']
             session['username'] = user['nombre_user']
@@ -639,8 +680,7 @@ def login():
             
         except Exception as e:
             print(f"Error en login: {e}")
-            flash('Error al iniciar sesión', 'error')
-            return redirect(url_for('login'))
+            return redirect(url_for('login', error='system'))
     
     return render_template('login.html')
 
@@ -682,29 +722,41 @@ def index():
 def usuarios():
     if request.method == 'POST':
         user = request.form['usuario']
-        contra = request.form['password']
-        rol = request.form.get('rol', 'mesero')  # Por defecto es mesero
+        password = request.form['password'].lower()  
+        rol = request.form.get('rol', 'mesero')
+        
+        if len(password) < 6:
+            flash("La contraseña debe tener al menos 6 caracteres", "error")
+            return redirect(url_for('usuarios'))
+            
         try:
+            # Hashear la contraseña antes de guardarla
+            hashed_password = hash_password(password)
             cursor = connection.cursor()
             cursor.execute("""
-                INSERT INTO usuario_empleado (nombre_user, contra_user, rol) VALUES (?, ?, ?)
-            """, (user, contra, rol))
+                INSERT INTO usuario_empleado (nombre_user, contra_user, rol) 
+                VALUES (?, ?, ?)
+            """, (user, hashed_password.decode('utf-8'), rol))
             connection.commit()
             flash("Usuario creado correctamente")
             return redirect(url_for('usuarios'))
-        except:
+        except Exception as e:
+            print(f"Error al crear usuario: {e}")
             flash("No se pudo crear el usuario")
+            return redirect(url_for('usuarios'))
     else:
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                SELECT * FROM usuario_empleado
+                SELECT id, nombre_user, rol, email 
+                FROM usuario_empleado
                 WHERE nombre_user IS NOT NULL
                 AND nombre_user != ''
             """)
             table = cursor.fetchall()
-        except:
-            print("Error no se pudieron extraer los datos de la base de datos")
+        except Exception as e:
+            print(f"Error al obtener usuarios: {e}")
+            table = []
         return render_template("usuarios.html", info=table)
     
 #ruta para el ingreso de productos
@@ -1504,10 +1556,12 @@ def empleados():
                     connection.rollback()
                     return render_template('registro_empleado.html')
                 
+                # Hashear la contraseña antes de guardarla
+                hashed_password = hash_password(password)
                 cursor.execute("""
                     INSERT INTO usuario_empleado (nombre_user, contra_user, rol, email) 
                     VALUES (?, ?, ?, ?)
-                """, (username, password, rol, email))
+                """, (username, hashed_password.decode('utf-8'), rol, email))
             
             # Confirmar transacción
             connection.commit()

@@ -19,7 +19,9 @@
 
     <div class="login-form">
       <div class="text-center mb-4">
-        <img src="../static/images/logos/logo.ico" alt="Logo Quesillos" class="logo-img">
+        <img src="../static/images/logos/logo.ico" alt="Logo Quesillos" class="logo-img mb-3" style="width: 120px; height: auto;">
+        <h3 class="text-primary mb-2">Bienvenido al Sistema</h3>
+        <p class="text-muted">Ingresa tus credenciales para continuar</p>
       </div>
 
       <form method="POST" action="/login" id="loginForm">
@@ -27,24 +29,27 @@
           <label for="username" class="form-label">
             <i class="bi bi-person me-2"></i>Usuario
           </label>
-          <input name="username" type="text" class="form-control" id="username" required>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input name="username" type="text" class="form-control" id="username" 
+                   placeholder="Ingresa tu usuario" required 
+                   autocomplete="username">
+          </div>
         </div>
 
         <div class="mb-4">
           <label for="password" class="form-label">
             <i class="bi bi-lock me-2"></i>Contraseña
           </label>
-          <div class="password-field">
-            <input name="password" type="password" class="form-control" id="password" required>
-            <span class="toggle-password" onclick="togglePassword()">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input name="password" type="password" class="form-control" id="password" 
+                   placeholder="Ingresa tu contraseña" required 
+                   autocomplete="current-password">
+            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
               <i class="bi bi-eye"></i>
-            </span>
+            </button>
           </div>
-        </div>
-
-        <div class="mb-4 form-check">
-          <input type="checkbox" class="form-check-input" id="remember">
-          <label class="form-check-label" for="remember">Recordar en este dispositivo</label>
         </div>
 
         <button type="submit" class="btn btn-danger w-100 mb-4">
@@ -91,16 +96,42 @@
       icon.classList.toggle('bi-eye-slash');
     }
 
+    // Mostrar el modal si hay un mensaje de error en la URL
+    if (window.location.search.includes('error')) {
+      const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+      const errorType = new URLSearchParams(window.location.search).get('error');
+      let errorMessage = 'Credenciales Incorrectas';
+      let errorDescription = 'El usuario o contraseña ingresados no son correctos.';
+
+      switch(errorType) {
+        case 'empty':
+          errorMessage = 'Campos Vacíos';
+          errorDescription = 'Por favor, completa todos los campos.';
+          break;
+        case 'system':
+          errorMessage = 'Error del Sistema';
+          errorDescription = 'Ha ocurrido un error. Por favor, intenta nuevamente.';
+          break;
+      }
+
+      document.querySelector('#errorModal .modal-title').textContent = errorMessage;
+      document.querySelector('#errorModal .modal-body p').textContent = errorDescription;
+      errorModal.show();
+    }
+
+    // Validación del formulario
     document.getElementById('loginForm').addEventListener('submit', function(e) {
-      if (!this.username.value || !this.password.value) {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      
+      if (!username || !password) {
         e.preventDefault();
-        new bootstrap.Modal(document.getElementById('errorModal')).show();
+        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+        document.querySelector('#errorModal .modal-title').textContent = 'Campos Vacíos';
+        document.querySelector('#errorModal .modal-body p').textContent = 'Por favor, completa todos los campos.';
+        errorModal.show();
       }
     });
-
-    if (new URLSearchParams(window.location.search).has('error')) {
-      new bootstrap.Modal(document.getElementById('errorModal')).show();
-    }
   </script>
 </body>
 </html>

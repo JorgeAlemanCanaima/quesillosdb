@@ -21,7 +21,7 @@
                 </div>
                 <div class="col-lg-4 mb-3">
                     <label for="input1" class="form-label">Contraseña</label>
-                    <input name="password" type="password" class="form-control" id="input3" placeholder="Contraseña">
+                    <input name="password" type="password" class="form-control" id="input3" placeholder="Al menos 6 caracteres" required maxlength="6">
                 </div>
                 <div class="col-lg-3 mb-3">
                     <button class="btn btn-primary w-100 py-8 fs-4 mb-4" type="submit">Registrar</button>
@@ -38,35 +38,71 @@
     <div class="card-body">
       <h5 class="card-title">Usuarios</h5>
       <div class="table-responsive">
-        <table class="table text-nowrap align-middle mb-0">
-          <thead>
-            <tr class="border-2 border-bottom border-primary border-0"> 
-              <th scope="col" class="ps-0">User</th>
-              <th scope="col" >Rol</th>
-              <th scope="col" >password</th>
-              <th scope="col">Opciones</th>
-            </tr>
-          </thead>
-          <tbody class="table-group-divider">
-            {% for i in info %}
-              <tr>
-                <td>{{ i['nombre_user'] }} </td>
-                <td>{{ i['rol']  }} </td>
-                <td>{{ i['contra_user'] }} </td>
-                <td>
-                  <a href="borrar.html" class="btn btn-danger">
-                  <img src="../static/images/logos/delete.png" alt="Editar" width="16" height="16">
-                </a> 
-                <a href="borrar.html" class="btn btn-secondary">
-                  <img src="../static/images/logos/editar.png" alt="Editar" width="16" height="16">
-                </a> 
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Usuario</th>
+                    <th scope="col">Rol</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in info %}
+                <tr>
+                    <td>{{ i['id'] }}</td>
+                    <td>{{ i['nombre_user'] }}</td>
+                    <td>{{ i['rol'] }}</td>
+                    <td>{{ i['email'] }}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="eliminarUsuario({{ i['id'] }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+function validatePassword(password) {
+    const minLength = 6;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (password.length < minLength) {
+        return "La contraseña debe tener al menos 6 caracteres";
+    }
+    if (!hasUpperCase) {
+        return "La contraseña debe contener al menos una mayúscula";
+    }
+    if (!hasLowerCase) {
+        return "La contraseña debe contener al menos una minúscula";
+    }
+    if (!hasNumbers) {
+        return "La contraseña debe contener al menos un número";
+    }
+    if (!hasSpecialChar) {
+        return "La contraseña debe contener al menos un carácter especial";
+    }
+    return "";
+}
+
+document.querySelector('form').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const error = validatePassword(password);
+    
+    if (error) {
+        e.preventDefault();
+        alert(error);
+    }
+});
+</script>
 {% endblock %}
