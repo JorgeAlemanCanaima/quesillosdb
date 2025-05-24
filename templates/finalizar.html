@@ -580,6 +580,7 @@
         const efectivoGroup = document.getElementById("efectivoGroup");
         const montoRecibido = document.getElementById("montoRecibido");
         const cambioInput = document.getElementById("cambio");
+        const form = document.querySelector('form');
 
         // Manejo de propina
         propinaSwitch.addEventListener("change", function() {
@@ -630,16 +631,40 @@
             }
         });
 
-        // Validación antes de enviar el formulario
-        document.querySelector('form').addEventListener('submit', function(e) {
+        // Manejo del envío del formulario
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
             const total = parseFloat(totalElement.innerText);
             const recibido = parseFloat(montoRecibido.value) || 0;
             
             if (document.getElementById('efectivo').checked && recibido < total) {
-                e.preventDefault();
                 montoRecibido.classList.add('invalid-amount');
                 document.getElementById('montoError').classList.add('show');
+                return;
             }
+
+            // Crear FormData del formulario
+            const formData = new FormData(form);
+            
+            // Enviar el formulario
+            fetch(form.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error al finalizar el pedido');
+                }
+                // Disparar evento de nueva notificación
+                document.dispatchEvent(new Event('nueva_notificacion'));
+                // Redirigir a la página de mesas
+                window.location.href = '/mesas';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al finalizar el pedido');
+            });
         });
 
         // Inicializar con propina activada por defecto
