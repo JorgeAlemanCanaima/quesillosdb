@@ -326,7 +326,7 @@
         // Confirmar pedido listo
         document.getElementById('confirmButton').addEventListener('click', function() {
             if (selectedOrderId) {
-                fetch(`/cocina/marcar_listo/${selectedOrderId}`, {
+                fetch(`/cocina/listo/${selectedOrderId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

@@ -203,6 +203,7 @@ except sqlite3.OperationalError:
 # Asegurar que la tabla pedidos tenga la columna estado
 try:
     connection.execute("ALTER TABLE pedidos ADD COLUMN estado TEXT DEFAULT 'pendiente'")
+    connection.execute("ALTER TABLE pedidos ADD COLUMN fecha_listo DATETIME")
     connection.commit()
 except sqlite3.OperationalError:
     # La columna ya existe, no hacer nada
@@ -2084,18 +2085,51 @@ def marcar_pedido_listo(pedido_id):
     try:
         cursor = connection.cursor()
         
+        # Verificar si el pedido existe
+        cursor.execute("SELECT id, estado FROM pedidos WHERE id = ?", (pedido_id,))
+        pedido = cursor.fetchone()
+        
+        if not pedido:
+            return jsonify({'success': False, 'error': 'Pedido no encontrado'}), 404
+            
         # Actualizar el estado del pedido
         cursor.execute("""
             UPDATE pedidos 
-            SET estado = 'listo' 
+            SET estado = 'listo'
             WHERE id = ?
         """, (pedido_id,))
         
+        # Verificar si se actualizó correctamente
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'error': 'No se pudo actualizar el pedido'}), 500
+            
         connection.commit()
-        return jsonify({'success': True})
+        
+        # Crear notificación
+        hora_actual = datetime.now().strftime('%H:%M')
+        notificacion = {
+            'id': len(notificaciones_pedidos) + 1,
+            'tipo': 'pedido_listo',
+            'mensaje': f'Pedido #{pedido_id} listo',
+            'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'pedido_id': pedido_id,
+            'leida': False
+        }
+        agregar_notificacion(notificacion)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pedido marcado como listo',
+            'pedido_id': pedido_id
+        })
+        
     except Exception as e:
         print(f"Error al marcar pedido como listo: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
+        connection.rollback()
+        return jsonify({
+            'success': False, 
+            'error': str(e)
+        }), 500
 
 @app.route('/barra/<int:barra_id>')
 @login_required
