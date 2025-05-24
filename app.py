@@ -1103,15 +1103,24 @@ def agregar_notificacion(notificacion):
     with notificaciones_lock:
         notificacion['id'] = len(notificaciones_pedidos) + 1
         notificaciones_pedidos.append(notificacion)
+        # Disparar evento de nueva notificación
+        from flask import request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'event': 'nueva_notificacion'})
 
 def obtener_notificaciones_no_leidas():
     with notificaciones_lock:
-        return [n for n in notificaciones_pedidos if not n.get('leida', False)]
+        # Filtrar y eliminar las notificaciones leídas
+        notificaciones_no_leidas = [n for n in notificaciones_pedidos if not n.get('leida', False)]
+        # Actualizar el array original con solo las no leídas
+        notificaciones_pedidos.clear()
+        notificaciones_pedidos.extend(notificaciones_no_leidas)
+        return notificaciones_no_leidas
 
 @app.route('/notificaciones')
 @login_required
-@role_required(['admin', 'mesero'])
-@cache_route(timeout=30)  # Cachear por 30 segundos
+@role_required(['admin', 'mesero', 'cocinero'])
+@cache_route(timeout=5)  # Cachear por 5 segundos
 def obtener_notificaciones():
     return jsonify(obtener_notificaciones_no_leidas())
 
@@ -1120,11 +1129,11 @@ def obtener_notificaciones():
 @role_required(['admin', 'mesero', 'cocinero'])
 def marcar_notificacion_leida(notificacion_id):
     try:
-        with notificaciones_lock:
-            for notif in notificaciones_pedidos:
-                if notif['id'] == notificacion_id:
-                    notif['leida'] = True
-                    return jsonify({'success': True})
+        # Encontrar y eliminar la notificación del array
+        for i, notif in enumerate(notificaciones_pedidos):
+            if notif['id'] == notificacion_id:
+                notificaciones_pedidos.pop(i)
+                return jsonify({'success': True, 'message': 'Notificación marcada como leída'})
         return jsonify({'error': 'Notificación no encontrada'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -2086,8 +2095,30 @@ def marcar_pedido_listo(pedido_id):
     try:
         cursor = connection.cursor()
         
-        # Verificar si el pedido existe
-        cursor.execute("SELECT id, estado FROM pedidos WHERE id = ?", (pedido_id,))
+        # Verificar si el pedido existe y obtener información detallada
+        cursor.execute("""
+            SELECT 
+                p.id,
+                p.estado,
+                f.codigo as factura_codigo,
+                cl.num_mesa,
+                cl.nombre as cliente_nombre,
+                (SELECT GROUP_CONCAT(pr.nombre || ' x' || pp.cantidad)
+                 FROM pedido_productos pp
+                 JOIN productos pr ON pp.producto_id = pr.id
+                 WHERE pp.pedido_id = p.id) as productos,
+                (SELECT SUM(pr.precio * pp.cantidad)
+                 FROM pedido_productos pp
+                 JOIN productos pr ON pp.producto_id = pr.id
+                 WHERE pp.pedido_id = p.id) as total_monto,
+                (SELECT COUNT(*)
+                 FROM pedido_productos
+                 WHERE pedido_id = p.id) as total_productos
+            FROM pedidos p
+            JOIN facturas f ON p.codigo_factura = f.codigo
+            JOIN clientes cl ON p.clientes_id = cl.id
+            WHERE p.id = ?
+        """, (pedido_id,))
         pedido = cursor.fetchone()
         
         if not pedido:
@@ -2106,15 +2137,25 @@ def marcar_pedido_listo(pedido_id):
             
         connection.commit()
         
-        # Crear notificación
+        # Crear notificación con detalles completos
         hora_actual = datetime.now().strftime('%H:%M')
+        mesa_nombre = mesas[pedido['num_mesa'] - 1]['nombre'] if 0 < pedido['num_mesa'] <= len(mesas) else f'Mesa {pedido["num_mesa"]}'
+        
         notificacion = {
             'id': len(notificaciones_pedidos) + 1,
             'tipo': 'pedido_listo',
-            'mensaje': f'Pedido #{pedido_id} listo',
+            'mensaje': f'Pedido #{pedido["factura_codigo"]} - {mesa_nombre} listo',
             'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
             'pedido_id': pedido_id,
-            'leida': False
+            'leida': False,
+            'detalles': {
+                'cliente': pedido['cliente_nombre'],
+                'hora': hora_actual,
+                'total_productos': pedido['total_productos'],
+                'total_monto': pedido['total_monto'],
+                'productos': [{'nombre': p.split(' x')[0], 'cantidad': int(p.split(' x')[1])} 
+                            for p in pedido['productos'].split(',')] if pedido['productos'] else []
+            }
         }
         agregar_notificacion(notificacion)
         
