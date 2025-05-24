@@ -871,27 +871,17 @@
               <td>${item.nombre}</td>
               <td>C$${item.precio.toFixed(2)}</td>
               <td>
-                <div class="quantity-control">
-                  <button class="btn btn-outline-secondary quantity-btn" onclick="decrementQuantity(${item.id})">
-                    <i class="bi bi-dash-lg"></i>
-                  </button>
-                  <input type="number" 
-                         value="${item.cantidad}" 
-                         min="1" 
-                         max="${item.stock}"
-                         data-product-id="${item.id}"
-                         onchange="updateQuantity(${item.id}, this.value)" 
-                         class="form-control quantity-input">
-                  <button class="btn btn-outline-secondary quantity-btn" onclick="incrementQuantity(${item.id})">
-                    <i class="bi bi-plus-lg"></i>
-                  </button>
+                <div class="input-group input-group-sm" style="width: 120px;">
+                  <button class="btn btn-outline-secondary" type="button" onclick="decreaseQuantity(${item.id})">-</button>
+                  <input type="text" class="form-control text-center" value="${item.cantidad}" readonly>
+                  <button class="btn btn-outline-secondary" type="button" onclick="increaseQuantity(${item.id})">+</button>
                 </div>
               </td>
               <td>C$${total.toFixed(2)}</td>
               <td>
-                <button onclick="removeFromOrder(${item.id})" class="btn btn-danger btn-sm">
-                  <i class="bi bi-trash3-fill"></i>
-                </button>
+                  <button onclick="removeFromOrder(${item.id})" class="btn btn-danger btn-sm">
+                    <img src="../static/images/logos/delete.png" alt="Eliminar" width="16" height="16">
+                  </button>
               </td>
             `;
             orderTableBody.appendChild(row);
@@ -911,24 +901,19 @@
           document.getElementById('total').value = `C$${total.toFixed(2)}`;
         }
         
-        function incrementQuantity(id) {
+        function increaseQuantity(id) {
           const item = orderItems.find(item => item.id === id);
-          if (item && item.cantidad < item.stock) {
+          if (item) {
             updateQuantity(id, item.cantidad + 1);
-          } else if (item && item.cantidad >= item.stock) {
-            Swal.fire({
-              icon: 'error',
-              title: 'Stock insuficiente',
-              text: 'No hay más stock disponible para este producto.',
-              confirmButtonText: 'Aceptar'
-            });
           }
         }
 
-        function decrementQuantity(id) {
+        function decreaseQuantity(id) {
           const item = orderItems.find(item => item.id === id);
           if (item && item.cantidad > 1) {
             updateQuantity(id, item.cantidad - 1);
+          } else if (item && item.cantidad === 1) {
+            removeFromOrder(id); // Eliminar si la cantidad llega a 1 y se disminuye de nuevo
           }
         }
         
