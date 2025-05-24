@@ -1943,61 +1943,7 @@ def movimiento_caja_page():
     ).fetchall()
     return render_template('movimiento_caja.html', movimientos=movimientos)
 
-@app.route('/debug_db')
-@login_required
-@role_required(['admin'])
-def debug_db():
-    try:
-        cursor = connection.cursor()
-        
-        # Verificar facturas
-        cursor.execute("SELECT * FROM facturas")
-        facturas = cursor.fetchall()
-        facturas_info = [dict(row) for row in facturas]
-        
-        # Verificar pedidos
-        cursor.execute("SELECT * FROM pedidos")
-        pedidos = cursor.fetchall()
-        pedidos_info = [dict(row) for row in pedidos]
-        
-        # Verificar pedido_productos
-        cursor.execute("SELECT * FROM pedido_productos")
-        pedido_productos = cursor.fetchall()
-        pedido_productos_info = [dict(row) for row in pedido_productos]
-        
-        # Verificar clientes
-        cursor.execute("SELECT * FROM clientes")
-        clientes = cursor.fetchall()
-        clientes_info = [dict(row) for row in clientes]
-        
-        # Verificar productos
-        cursor.execute("SELECT * FROM productos")
-        productos = cursor.fetchall()
-        productos_info = [dict(row) for row in productos]
-        
-        # Consulta específica para verificar ventas de hoy
-        cursor.execute("""
-            SELECT f.*, p.fecha_hora, p.id as pedido_id
-            FROM facturas f
-            JOIN pedidos p ON f.codigo = p.codigo_factura
-            WHERE date(p.fecha_hora, 'localtime') = date('now', 'localtime')
-        """)
-        ventas_hoy = cursor.fetchall()
-        ventas_hoy_info = [dict(row) for row in ventas_hoy]
-        
-        debug_info = {
-            'facturas': facturas_info,
-            'pedidos': pedidos_info,
-            'pedido_productos': pedido_productos_info,
-            'clientes': clientes_info,
-            'productos': productos_info,
-            'ventas_hoy': ventas_hoy_info
-        }
-        
-        return jsonify(debug_info)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/cocina/pedidos_pendientes')
 @login_required
@@ -2047,7 +1993,7 @@ def cierre_corte():
         SELECT IFNULL(SUM(CASE WHEN tipo = 'salida' THEN precio ELSE 0 END), 0) as gastos,
                IFNULL(SUM(CASE WHEN tipo = 'entrada' THEN precio ELSE 0 END), 0) as entradas
         FROM movimientos_caja
-        WHERE date(fecha) = date('now', 'localtime') AND corte_id IS NULL
+        WHERE date(fecha, 'localtime') = date('now', 'localtime') AND corte_id IS NULL
     """)
     movs = cursor.fetchone()
     gastos = movs['gastos'] or 0
@@ -2076,7 +2022,7 @@ def cierre_corte():
                 fecha, usuario_id, venta_total, venta_efectivo, venta_bac, venta_banpro,
                 efectivo_real, diferencia_efectivo, gastos, entradas
             ) VALUES (
-                datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?
+                datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, (
             session['user_id'], ventas['venta_total'], ventas['venta_efectivo'], ventas['venta_bac'],
