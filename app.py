@@ -833,7 +833,7 @@ def catalogoproductos():
         cursor = connection.cursor()
         cursor.execute("""
             SELECT * FROM productos
-            ORDER BY categoria, nombre
+            
         """)
         table = cursor.fetchall()
         return render_template("catalogoproductos.html", info=table)
@@ -1698,6 +1698,7 @@ def registro():
             p.nombre AS producto_nombre
         FROM entradas_inventario ei
         JOIN productos p ON ei.producto_id = p.id
+        
     '''
     filters = []
     params = []
@@ -1716,7 +1717,7 @@ def registro():
             params.append(inicio.strftime('%Y-%m-%d %H:%M:%S'))
     if filters:
         query += " WHERE " + " AND ".join(filters)
-    query += " ORDER BY ei.fecha_entrada DESC"
+    query += " ORDER BY ei.fecha_entrada ASC"
     cursor.execute(query, params)
     entradas = cursor.fetchall()
     return render_template("registro.html", 
