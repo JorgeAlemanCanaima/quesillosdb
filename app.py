@@ -1945,7 +1945,7 @@ def movimiento_caja_page():
 
 
 
-@app.route('/cocina/pedidos_pendientes')
+@app.route('/cocina')
 @login_required
 @role_required(['cocinero', 'admin'])  # Permitir acceso a cocineros y administradores
 def cocina_pedidos_pendientes():
@@ -2077,7 +2077,7 @@ def cierre_corte():
                            entradas=entradas,
                            historial_cortes=historial_cortes)
 
-@app.route('/cocina/marcar_listo/<int:pedido_id>', methods=['POST'])
+@app.route('/cocina/listo/<int:pedido_id>', methods=['POST'])
 @login_required
 @role_required(['cocinero', 'admin'])
 def marcar_pedido_listo(pedido_id):
